@@ -4,30 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Klasora — Your Clique Awaits</title>
-<link rel="icon" type="image/png" href="/klasora-logo.png">
-<link rel="apple-touch-icon" href="/klasora-logo.png">
+<link rel="icon" type="image/png" href="/klasora-icon.png">
+<link rel="apple-touch-icon" href="/klasora-icon.png">
 <link rel="manifest" href="/manifest.json">
-<script src="/socket.io/socket.io.js"></script>
+<link rel="stylesheet" href="/ui-refresh.css">
+<script src="/ui-refresh.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
 
 /* ── THEMES ── */
 [data-theme="dark"] {
-  --bg:#08090c; --surface:#0f1014; --surface2:#16171d; --surface3:#1e1f27;
-  --border:#252630; --text:#eeeef5; --text2:#7f8099; --text3:#3e3f52;
-  --panel-glow:rgba(108,99,255,0.06);
-  --shadow:rgba(0,0,0,0.5); --msg-in:#16171d;
+  --bg:#07333d; --surface:#0b424a; --surface2:#104e55; --surface3:#155a60;
+  --border:#20545b; --text:#effafa; --text2:#a1c0c1; --text3:#688d90;
+  --panel-glow:rgba(25,169,157,0.08);
+  --shadow:rgba(0,20,25,0.5); --msg-in:#104e55;
 }
 [data-theme="light"] {
-  --bg:#f4f4f8; --surface:#ffffff; --surface2:#f0f0f5; --surface3:#e8e8f0;
-  --border:#dddde8; --text:#1a1a2e; --text2:#6b6b85; --text3:#aaaabc;
-  --panel-glow:rgba(108,99,255,0.04);
-  --shadow:rgba(0,0,0,0.12); --msg-in:#ebebf5;
+  --bg:#edf5f4; --surface:#ffffff; --surface2:#e7f2f0; --surface3:#dcebe8;
+  --border:#d4e4e1; --text:#142a2d; --text2:#607a7c; --text3:#91a7a7;
+  --panel-glow:rgba(8,126,123,0.05);
+  --shadow:rgba(8,57,68,0.12); --msg-in:#e7f2f0;
 }
 :root {
-  --accent:#6c63ff; --accent2:#9d97ff; --glow:rgba(108,99,255,0.18);
+  --accent:#087e7b; --accent2:#19a99d; --glow:rgba(7,141,136,0.16);
   --pink:#ff6b9d; --green:#22d97a; --online:#22d97a; --offline:#888;
-  --msg-out:#6c63ff; --red:#ff4757; --orange:#ffb347; --yellow:#ffd32a;
+  --msg-out:#087e7b; --red:#ff4757; --orange:#ffb347; --yellow:#ffd32a;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;transition:background 0.3s,color 0.3s;}
@@ -38,25 +39,61 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
 /* ── AUTH ── */
-#authScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;background-image:radial-gradient(ellipse 60% 50% at 50% -10%,rgba(108,99,255,0.15),transparent);}
-.auth-wrap{width:100%;max-width:420px;padding:1.5rem;}
-.auth-header{text-align:center;margin-bottom:1.8rem;}
-.brand-logo-auth{display:block;width:min(230px,80%);height:154px;object-fit:contain;padding:.35rem;margin:0 auto .8rem;background:#fff;border-radius:14px;}
+#authScreen{position:fixed;inset:0;display:grid;grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);z-index:999;background:#f2f8f8;color:#14242a;overflow:auto;}
+.auth-form-panel{display:flex;align-items:center;justify-content:center;min-width:0;padding:40px 32px;background:linear-gradient(145deg,#f6fbfb,#eaf4f3);}
+.auth-wrap{width:100%;max-width:430px;padding:34px;background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.94);border-radius:24px;box-shadow:0 24px 70px rgba(8,49,54,.12);backdrop-filter:blur(18px);}
+.auth-header{margin-bottom:1.65rem;}
+.auth-header h1{font-family:'Outfit',sans-serif;font-size:clamp(1.7rem,2.4vw,2.1rem);font-weight:600;letter-spacing:-.04em;color:#121923;}
+.auth-header p{margin-top:.4rem;color:#68717c;font-size:.82rem;line-height:1.55;}
+.auth-mobile-brand{display:none;}
+.auth-brand-panel{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;min-width:0;padding:48px;overflow:hidden;color:#f5ffff;text-align:center;background:radial-gradient(ellipse at 50% 32%,rgba(25,177,163,.25),transparent 46%),linear-gradient(145deg,#073944,#07505a 50%,#062f3b);}
+.auth-brand-panel:before,.auth-brand-panel:after{position:absolute;content:"";width:420px;height:420px;border:1px solid rgba(142,239,221,.12);border-radius:50%;pointer-events:none;}
+.auth-brand-panel:before{top:-230px;right:-170px;}
+.auth-brand-panel:after{bottom:-300px;left:-180px;width:560px;height:560px;}
+.auth-brand-mark{position:relative;z-index:1;display:grid;width:220px;height:220px;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(221,255,249,.08);box-shadow:0 22px 70px rgba(0,0,0,.2),inset 0 0 40px rgba(123,255,231,.08);}
+.auth-brand-mark img{display:block;width:76%;height:76%;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(0,0,0,.16));}
+.auth-brand-copy{position:relative;z-index:1;max-width:480px;}
+.auth-brand-copy strong{display:block;font:800 clamp(2.4rem,4.4vw,4.4rem)/1 'Outfit',sans-serif;letter-spacing:.08em;color:#f4ffff;}
+.auth-brand-copy span{display:block;margin-top:12px;color:#b8d5d8;font-size:.76rem;font-weight:700;letter-spacing:.16em;}
+.auth-brand-copy p{margin-top:22px;color:#d9eeed;font-size:1rem;line-height:1.7;}
 .brand-logo-sidebar{display:block;width:102px;height:68px;object-fit:contain;padding:2px;background:#fff;border-radius:9px;flex-shrink:0;}
-@media(max-height:700px){.brand-logo-auth{height:112px;width:min(168px,70%);margin-bottom:.45rem;}.auth-header{margin-bottom:1rem;}.auth-wrap{padding:1rem;}}
-.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:2rem;box-shadow:0 24px 80px var(--shadow);}
-.auth-tabs{display:flex;gap:3px;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:1.5rem;}
-.auth-tab{flex:1;text-align:center;padding:0.55rem;border-radius:9px;cursor:pointer;font-size:0.8rem;font-weight:600;color:var(--text2);transition:all 0.2s;}
-.auth-tab.active{background:var(--accent);color:white;}
+.auth-card{background:transparent;border:0;border-radius:0;padding:0;box-shadow:none;}
+.auth-tabs{display:flex;gap:22px;border-bottom:1px solid #dfe9e8;margin:0 0 1.3rem;}
+.auth-tab{padding:0 0 11px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;color:#7a838d;font-size:.84rem;font-weight:600;cursor:pointer;}
+.auth-tab.active{border-color:#078d88;color:#087e7b;}
 .field{margin-bottom:1rem;}
-.field label{font-size:0.7rem;font-weight:700;color:var(--text2);display:block;margin-bottom:0.4rem;letter-spacing:0.08em;text-transform:uppercase;}
-.field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:0.7rem 1rem;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:0.85rem;outline:none;transition:all 0.2s;}
-.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,99,255,0.1);}
-.field input::placeholder{color:var(--text3);}
-.auth-btn{width:100%;background:linear-gradient(135deg,#7b74ff,#6c63ff);border:none;color:white;padding:0.8rem;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:0.3rem;}
-.auth-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(108,99,255,0.35);}
+.field label{font-size:.77rem;font-weight:600;color:#313a45;display:block;margin-bottom:.42rem;}
+.field input{width:100%;background:rgba(249,252,252,.88);border:1px solid #d9e4e3;border-radius:10px;padding:.82rem .95rem;color:#1b2b30;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;outline:none;transition:all .2s;}
+.field input:focus{border-color:#078d88;box-shadow:0 0 0 3px rgba(7,141,136,.12);}
+.field input::placeholder{color:#929ba6;}
+.auth-btn{width:100%;background:linear-gradient(110deg,#0b8d86,#08747b);border:1px solid #087c7b;color:white;padding:.78rem 1rem;border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:.3rem;}
+.auth-btn:hover{background:linear-gradient(110deg,#087a75,#075f68);box-shadow:0 6px 16px rgba(7,112,113,.2);}
 .auth-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
-.auth-error{color:#ff8080;font-size:0.74rem;margin-top:0.5rem;padding:0.5rem 0.75rem;background:#ff606015;border-radius:8px;display:none;}
+.auth-error{color:#bd3434;font-size:.74rem;margin-top:.5rem;padding:.5rem .75rem;background:#fff0f0;border-radius:8px;display:none;}
+.auth-provider-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:.65rem;padding:.72rem .9rem;border:1px solid #d9e4e3;border-radius:9px;color:#27383d;background:rgba(255,255,255,.76);font:600 .8rem 'Plus Jakarta Sans',sans-serif;cursor:pointer;}
+.auth-provider-btn:hover:not(:disabled){background:#fff;border-color:#a9c5c2;}
+.auth-provider-btn:disabled{color:#7b878a;background:#f2f5f4;cursor:not-allowed;}
+.auth-provider-mark{display:grid;width:18px;height:18px;place-items:center;border-radius:50%;background:#fff;color:#162227;font-size:13px;font-weight:800;}
+.auth-provider-btn:disabled .auth-provider-mark{background:#e3e9e8;color:#657272;}
+.auth-remember-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:.2rem 0 .8rem;font-size:.7rem;}
+.auth-remember{display:inline-flex;align-items:center;gap:7px;color:#69777a;cursor:pointer;}
+.auth-remember input{width:14px;height:14px;margin:0;accent-color:#078d88;}
+.auth-forgot-link{display:block;width:max-content;margin:0 0 0 auto;padding:0;border:0;background:transparent;color:#087e7b;font-size:.7rem;cursor:pointer;}
+.auth-separator{display:flex;align-items:center;gap:12px;margin:.9rem 0;color:#9aa2ab;font-size:.7rem;}
+.auth-separator:before,.auth-separator:after{content:"";height:1px;flex:1;background:#e2e9e8;}
+#authScreen.is-forgot .auth-tabs,#authScreen.is-reset .auth-tabs{display:none;}
+@media(max-width:900px){
+  #authScreen{display:block;overflow:auto;background:radial-gradient(ellipse at 50% -5%,rgba(19,151,143,.25),transparent 45%),linear-gradient(160deg,#073944,#062e3b 65%,#082d38);}
+  .auth-form-panel{min-height:100%;padding:25px 22px 40px;background:transparent;}
+  .auth-wrap{max-width:430px;padding:24px 22px;background:rgba(247,253,252,.96);border-color:rgba(255,255,255,.8);border-radius:22px;box-shadow:0 20px 55px rgba(0,0,0,.24);}
+  .auth-brand-panel{display:none;}
+  .auth-mobile-brand{display:flex;align-items:center;flex-direction:column;margin:0 auto 18px;text-align:center;}
+  .auth-mobile-brand img{width:60px;height:60px;object-fit:contain;}
+  .auth-mobile-brand strong{margin-top:4px;color:#0b3741;font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:800;letter-spacing:.08em;}
+  .auth-mobile-brand span{margin-top:3px;color:#617b7d;font-size:.48rem;font-weight:700;letter-spacing:.08em;}
+  .auth-header h1{font-size:1.5rem;}
+}
+@media(max-height:760px) and (max-width:900px){.auth-form-panel{align-items:flex-start;padding-top:14px;}.auth-mobile-brand{margin-bottom:12px;}.auth-mobile-brand img{width:48px;height:48px;}.auth-header{margin-bottom:1rem;}}
 
 /* ── APP SHELL ── */
 #appScreen{display:none;flex:1;height:100vh;overflow:hidden;}
@@ -66,7 +103,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .sidebar{width:300px;min-width:300px;background:linear-gradient(180deg,var(--surface),var(--surface) 70%,var(--panel-glow));border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;}
 .sidebar-top{padding:1.1rem 1.2rem 0.9rem;border-bottom:1px solid var(--border);}
 .sidebar-logo{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem;}
-.logo-wm{font-family:'Outfit',sans-serif;font-weight:800;font-size:1.35rem;letter-spacing:-0.04em;background:linear-gradient(135deg,#9d97ff,#6c63ff,#ff6b9d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo-wm{font-family:'Outfit',sans-serif;font-weight:800;font-size:1.35rem;letter-spacing:-0.04em;background:linear-gradient(135deg,#46d3bf,#087e7b,#0b3741);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
 .top-actions{display:flex;gap:0.3rem;align-items:center;}
 .icon-pill{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
 .icon-pill:hover{background:var(--surface2);color:var(--text2);}
@@ -79,17 +116,17 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .sub-nav{display:flex;gap:.3rem;padding:.45rem .55rem;border-bottom:1px solid var(--border);background:var(--surface2);}
 .sub-nav button{flex:1;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text3);padding:.42rem .2rem;font-size:.63rem;font-weight:700;cursor:pointer;white-space:nowrap;}
 .sub-nav button:hover{color:var(--text2);background:var(--surface3);}
-.sub-nav button.active{color:var(--accent2);background:var(--glow);border-color:rgba(108,99,255,.25);}
+.sub-nav button.active{color:var(--accent2);background:var(--glow);border-color:rgba(7,126,123,.25);}
 .search-wrap{padding:0.8rem 1rem 0.65rem;border-bottom:1px solid var(--border);}
 .search-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:0.48rem 0.85rem 0.48rem 2rem;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:0.76rem;outline:none;transition:border-color 0.2s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23555' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zm-5.242 1.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:0.6rem center;}
 .search-input:focus{border-color:var(--accent);}
 .search-input::placeholder{color:var(--text3);}
 .add-wrap{padding:0.65rem 1rem;border-bottom:1px solid var(--border);}
-.add-btn{width:100%;background:var(--glow);border:1px dashed rgba(108,99,255,0.4);color:var(--accent2);border-radius:9px;padding:0.45rem;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.73rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
-.add-btn:hover{background:rgba(108,99,255,0.22);border-color:var(--accent);}
+.add-btn{width:100%;background:var(--glow);border:1px dashed rgba(7,126,123,0.4);color:var(--accent2);border-radius:9px;padding:0.45rem;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.73rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.add-btn:hover{background:rgba(7,126,123,0.22);border-color:var(--accent);}
 .chat-filters{display:flex;gap:.35rem;padding:.55rem .8rem;border-bottom:1px solid var(--border);}
 .chat-filter{flex:1;border:1px solid var(--border);background:var(--surface2);color:var(--text3);border-radius:8px;padding:.42rem .35rem;font-size:.68rem;font-weight:700;cursor:pointer;}
-.chat-filter.active{background:var(--glow);border-color:rgba(108,99,255,.4);color:var(--accent2);}
+.chat-filter.active{background:var(--glow);border-color:rgba(7,126,123,.4);color:var(--accent2);}
 .settings-panel{padding:1.15rem .9rem 2rem;}
 .settings-heading{font:800 1.35rem 'Outfit',sans-serif;margin-bottom:.25rem;}
 .settings-subtitle{font-size:.72rem;color:var(--text3);margin-bottom:1rem;}
@@ -151,8 +188,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .pom-label{font-size:0.7rem;color:var(--text2);font-weight:600;letter-spacing:0.08em;}
 .pom-btns{display:flex;gap:0.7rem;margin-bottom:1.5rem;}
 .pom-btn{padding:0.6rem 1.5rem;border-radius:12px;border:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
-.pom-btn.start{background:linear-gradient(135deg,#7b74ff,#6c63ff);color:white;}
-.pom-btn.start:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(108,99,255,0.35);}
+.pom-btn.start{background:linear-gradient(110deg,#0b8d86,#08747b);color:white;}
+.pom-btn.start:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(7,112,113,0.35);}
 .pom-btn.reset{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
 .pom-btn.reset:hover{color:var(--text);}
 .pom-modes{display:flex;gap:0.4rem;margin-bottom:1.5rem;}
@@ -185,7 +222,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .bubble{max-width:min(68%,620px);padding:0.62rem 0.9rem;border-radius:18px;font-size:0.82rem;line-height:1.55;position:relative;word-break:break-word;box-shadow:0 3px 12px rgba(0,0,0,.08);}
 .msg-group.out .bubble{background:linear-gradient(135deg,#766eff,var(--msg-out));color:white;border-bottom-right-radius:6px;}
 .msg-group.inc .bubble{background:var(--msg-in);color:var(--text);border-bottom-left-radius:6px;border:1px solid var(--border);}
-.bubble.ai-bubble{background:linear-gradient(135deg,#1a1a3e,#16171d);border:1px solid rgba(108,99,255,0.3);}
+.bubble.ai-bubble{background:linear-gradient(135deg,#0b424a,#104e55);border:1px solid rgba(25,169,157,0.3);}
 .ai-tag{font-size:0.6rem;font-weight:700;color:var(--accent2);display:flex;align-items:center;gap:3px;margin-bottom:4px;letter-spacing:0.05em;}
 .sender-name{font-size:0.6rem;font-weight:700;margin-bottom:3px;}
 .bactions{position:absolute;top:-11px;right:-11px;z-index:10;opacity:0;transform:translateY(3px);transition:opacity .15s,transform .15s;}
@@ -228,7 +265,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 @keyframes typ{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-4px)}}
 
 .input-area{padding:0.9rem clamp(1rem,3vw,2.4rem) 1rem;border-top:1px solid var(--border);background:linear-gradient(180deg,var(--surface),var(--surface2));flex-shrink:0;position:relative;}
-.attachment-preview{display:none;align-items:center;gap:.7rem;margin-bottom:.55rem;padding:.65rem .75rem;background:var(--surface2);border:1px solid rgba(108,99,255,.3);border-radius:14px;box-shadow:0 8px 20px var(--shadow);}
+.attachment-preview{display:none;align-items:center;gap:.7rem;margin-bottom:.55rem;padding:.65rem .75rem;background:var(--surface2);border:1px solid rgba(7,126,123,.3);border-radius:14px;box-shadow:0 8px 20px var(--shadow);}
 .attachment-preview.show{display:flex;}
 .attachment-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:1.35rem;flex-shrink:0;}
 .attachment-info{min-width:0;flex:1;}
@@ -237,7 +274,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .attachment-action{border:0;border-radius:8px;padding:.4rem .65rem;font-size:.7rem;font-weight:700;cursor:pointer;}
 .attachment-cancel{background:var(--surface3);color:var(--text2);}
 .attachment-send{background:var(--accent);color:white;}
-.voice-preview{display:none;align-items:center;gap:.6rem;margin-bottom:.55rem;padding:.65rem .75rem;background:var(--surface2);border:1px solid rgba(108,99,255,.3);border-radius:14px;box-shadow:0 8px 20px var(--shadow);}
+.voice-preview{display:none;align-items:center;gap:.6rem;margin-bottom:.55rem;padding:.65rem .75rem;background:var(--surface2);border:1px solid rgba(7,126,123,.3);border-radius:14px;box-shadow:0 8px 20px var(--shadow);}
 .voice-preview.show{display:flex;}
 .voice-recording{color:var(--red);font-size:.72rem;font-weight:700;animation:voicepulse 1.2s infinite;}
 .voice-preview audio{width:220px;height:32px;flex:1;min-width:0;}
@@ -247,18 +284,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .ep-e{font-size:1.2rem;cursor:pointer;padding:4px;border-radius:6px;transition:background 0.1s;}
 .ep-e:hover{background:var(--surface3);}
 .input-row{display:flex;align-items:flex-end;gap:0.5rem;background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:0.55rem 0.75rem;transition:border-color 0.2s,box-shadow .2s;}
-.input-row:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,99,255,0.08);}
+.input-row:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(7,126,123,0.08);}
 .input-actions{display:flex;gap:0.2rem;}
 .i-btn{background:none;border:none;font-size:1rem;cursor:pointer;padding:4px;color:var(--text3);transition:color 0.2s,background .2s;line-height:1;border-radius:8px;}
 .i-btn:hover{color:var(--text2);}
 .msg-inp{flex:1;background:none;border:none;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:0.83rem;outline:none;resize:none;max-height:110px;line-height:1.5;}
 .msg-inp::placeholder{color:var(--text3);}
-.send-btn{background:linear-gradient(135deg,#8b84ff,#6c63ff);border:none;color:white;width:35px;height:35px;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;font-size:0.86rem;box-shadow:0 5px 14px rgba(108,99,255,.28);}
-.send-btn:hover{transform:scale(1.06);box-shadow:0 4px 16px rgba(108,99,255,0.4);}
+.send-btn{background:linear-gradient(110deg,#19a99d,#087e7b);border:none;color:white;width:35px;height:35px;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;font-size:0.86rem;box-shadow:0 5px 14px rgba(7,126,123,.28);}
+.send-btn:hover{transform:scale(1.06);box-shadow:0 4px 16px rgba(7,126,123,0.4);}
 .send-btn:active{transform:scale(0.96);}
 
 /* ── AI ASSISTANT ── */
-.ai-bar{background:linear-gradient(135deg,rgba(108,99,255,0.12),rgba(255,107,157,0.08));border-top:1px solid rgba(108,99,255,0.2);padding:0.5rem 1.3rem;display:flex;align-items:center;gap:0.6rem;flex-shrink:0;}
+.ai-bar{background:linear-gradient(135deg,rgba(25,169,157,0.12),rgba(255,107,157,0.06));border-top:1px solid rgba(25,169,157,0.2);padding:0.5rem 1.3rem;display:flex;align-items:center;gap:0.6rem;flex-shrink:0;}
 .ai-inp{flex:1;background:transparent;border:none;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:0.8rem;outline:none;}
 .ai-inp::placeholder{color:var(--text3);}
 .ai-ask-btn{background:var(--accent);border:none;color:white;padding:0.35rem 0.85rem;border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all 0.2s;display:flex;align-items:center;gap:0.3rem;}
@@ -273,18 +310,28 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .quiz-feedback{font-size:.7rem;margin-top:.35rem;color:var(--text2);}
 
 /* ── CALL UI ── */
-.call-overlay{position:fixed;inset:0;background:rgba(8,9,12,0.95);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(8px);}
+.call-overlay{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 40%,#0b5860 0%,#07333d 48%,#071d29 100%);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(8px);color:#effafa;overflow:hidden;}
 .call-overlay.show{display:flex;}
-.call-avatar{width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin-bottom:1rem;border:3px solid rgba(255,255,255,0.2);}
-.call-name{font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:0.4rem;}
-.call-status{font-size:0.85rem;color:var(--text2);margin-bottom:2rem;}
-.call-btns{display:flex;gap:1.2rem;}
-.call-btn{width:60px;height:60px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.3rem;transition:all 0.2s;}
+.call-brand{position:absolute;top:clamp(22px,6vh,52px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;color:#c4e5e3;font:700 14px 'Outfit',sans-serif;letter-spacing:.13em;}
+.call-brand span{color:#46d3bf;font-size:20px;}
+.call-avatar{width:clamp(112px,20vw,176px);height:clamp(112px,20vw,176px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin:0 auto 1.4rem;border:4px solid #46d3bf;box-shadow:0 0 0 10px #46d3bf1c,0 0 55px #46d3bf55;}
+.call-name{font-family:'Outfit',sans-serif;font-size:clamp(1.45rem,4vw,2.1rem);font-weight:700;margin-bottom:.5rem;}
+.call-status{font-size:.9rem;color:#46d3bf;margin-bottom:.35rem;}
+.call-duration{min-height:1.4rem;color:#c4e5e3;font-size:.95rem;font-variant-numeric:tabular-nums;}
+.call-btns{position:absolute;bottom:clamp(35px,8vh,78px);display:flex;align-items:center;justify-content:center;gap:clamp(14px,4vw,30px);}
+.call-btn{width:58px;height:58px;border-radius:50%;border:1px solid #ffffff24;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.25rem;transition:all 0.2s;color:#effafa;background:#ffffff1a;}
 .call-btn:hover{transform:scale(1.08);}
-.call-btn.end{background:#ff4757;} .call-btn.accept{background:#22d97a;} .call-btn.mute{background:var(--surface3);}
-.call-videos{display:flex;gap:1rem;margin-bottom:1.5rem;}
+.call-btn.end{width:68px;height:68px;border:0;color:#fff;background:#df505a;transform:rotate(135deg);box-shadow:0 7px 26px #df505a55;} .call-btn.accept{background:#22d97a;} .call-btn.mute{background:#ffffff1a;}
+.call-btn[aria-pressed="true"]{color:#46d3bf;background:#46d3bf28;border-color:#46d3bf77;}
+.call-btn[hidden]{display:none;}
+.call-videos{position:absolute;inset:0;display:flex;align-items:stretch;justify-content:center;background:#06151b;}
 video{border-radius:16px;background:#000;object-fit:cover;}
-#remoteVideo{width:360px;height:240px;} #localVideo{width:160px;height:110px;border:2px solid var(--accent);}
+#remoteVideo{width:100%;height:100%;max-height:100vh;border-radius:0;} #localVideo{position:absolute;right:24px;top:24px;width:min(24vw,220px);height:min(32vh,165px);border:2px solid #46d3bf;border-radius:18px;box-shadow:0 8px 30px #0008;}
+.call-overlay:has(.call-videos[style*="flex"]) .call-avatar,.call-overlay:has(.call-videos[style*="flex"]) .call-name,.call-overlay:has(.call-videos[style*="flex"]) .call-status,.call-overlay:has(.call-videos[style*="flex"]) .call-duration {position:relative;z-index:1;text-shadow:0 2px 12px #000;}
+.call-overlay:has(.call-videos[style*="flex"]) .call-avatar{margin-top:auto;margin-bottom:12px;}
+.call-overlay:has(.call-videos[style*="flex"]) .call-name{margin-bottom:4px;}
+.call-overlay:has(.call-videos[style*="flex"]) .call-duration{margin-bottom:100px;}
+.call-overlay:has(.call-videos[style*="flex"]) .call-btns{z-index:2;bottom:35px;padding:12px 20px;border:1px solid #ffffff30;border-radius:999px;background:#122932aa;backdrop-filter:blur(16px);}
 
 /* ── INCOMING CALL ── */
 .incoming-call{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.2rem 1.5rem;z-index:600;display:none;align-items:center;gap:1rem;box-shadow:0 16px 48px var(--shadow);animation:slideInRight 0.3s ease;}
@@ -312,8 +359,8 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 .modal-err{color:#ff8080;font-size:0.72rem;margin-bottom:0.5rem;padding:0.4rem 0.7rem;background:#ff606015;border-radius:8px;display:none;}
 .modal-acts{display:flex;gap:0.5rem;margin-top:0.3rem;}
 .mbtn{flex:1;padding:0.62rem;border-radius:11px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.81rem;font-weight:600;cursor:pointer;transition:all 0.2s;border:none;}
-.mbtn.pri{background:linear-gradient(135deg,#7b74ff,#6c63ff);color:white;}
-.mbtn.pri:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(108,99,255,0.3);}
+.mbtn.pri{background:linear-gradient(110deg,#0b8d86,#08747b);color:white;}
+.mbtn.pri:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(7,112,113,0.3);}
 .mbtn.sec{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
 .mbtn.sec:hover{color:var(--text);}
 .emoji-grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:0.9rem;}
@@ -422,44 +469,63 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 
 <!-- AUTH -->
 <div id="authScreen">
-  <div class="auth-wrap">
-    <div class="auth-header">
-      <img class="brand-logo-auth" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">
+  <section class="auth-form-panel">
+    <div class="auth-wrap">
+      <div class="auth-mobile-brand">
+        <img src="/klasora-icon.png" alt="">
+        <strong>KLASORA</strong>
+        <span>YOUR CLIQUE, YOUR CIRCLE, YOUR CAMPUS</span>
+      </div>
+      <header class="auth-header">
+        <h1 id="authHeading">Welcome back</h1>
+        <p id="authSubheading">Log in to continue to your classes.</p>
+      </header>
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button class="auth-tab active" type="button" role="tab" aria-selected="true" onclick="switchTab('login')">Log in</button>
+          <button class="auth-tab" type="button" role="tab" aria-selected="false" onclick="switchTab('register')">Sign up</button>
+        </div>
+        <div id="loginForm">
+          <div class="field"><label for="lEmail">Email</label><input type="email" id="lEmail" placeholder="you@gmail.com" autocomplete="email"></div>
+          <div class="field"><label for="lPass">Password</label><input type="password" id="lPass" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+          <div class="auth-remember-row">
+            <label class="auth-remember"><input id="rememberMe" type="checkbox"> Remember me</label>
+            <button class="auth-forgot-link" type="button" onclick="showForgotPassword()">Forgot password?</button>
+          </div>
+          <div class="auth-error" id="lErr" role="alert"></div>
+          <button class="auth-btn" id="loginBtn" onclick="doLogin()">Login</button>
+          <div class="auth-separator">or continue with</div>
+          <div class="auth-error" id="googleAuthError" role="alert"></div>
+          <button class="auth-provider-btn" type="button" onclick="signInWithGoogle()"><span class="auth-provider-mark" aria-hidden="true">G</span>Continue with Google</button>
+          <button class="auth-provider-btn" type="button" disabled title="Apple sign-in is not configured">Apple sign-in unavailable</button>
+        </div>
+        <div id="registerForm" style="display:none">
+          <div class="field"><label for="rName">Your Full Name</label><input type="text" id="rName" placeholder="e.g. Jordan Lee" autocomplete="name"></div>
+          <div class="field"><label for="rEmail">Your Email</label><input type="email" id="rEmail" placeholder="you@gmail.com" autocomplete="email"></div>
+          <div class="field"><label for="rPass">Password</label><input type="password" id="rPass" placeholder="Min 8 characters" autocomplete="new-password"></div>
+          <div class="auth-error" id="rErr" role="alert"></div>
+          <button class="auth-btn" id="regBtn" onclick="doRegister()">Sign up</button>
+        </div>
+        <div id="forgotForm" style="display:none">
+          <div class="field"><label for="forgotEmail">Enter your Email</label><input type="email" id="forgotEmail" placeholder="you@gmail.com" autocomplete="email"></div>
+          <div class="auth-error" id="forgotErr" role="alert"></div>
+          <div id="forgotMsg" style="display:none;color:#68717c;font-size:.78rem;line-height:1.5;margin-bottom:.8rem;"></div>
+          <button class="auth-btn" id="forgotBtn" onclick="requestPasswordReset()">Send reset link</button>
+          <button class="auth-forgot-link" type="button" onclick="switchTab('login')">Back to sign in</button>
+        </div>
+        <div id="resetForm" style="display:none">
+          <div class="field"><label for="resetPass">New Password</label><input type="password" id="resetPass" placeholder="Min 8 characters" autocomplete="new-password"></div>
+          <div class="auth-error" id="resetErr" role="alert"></div>
+          <button class="auth-btn" id="resetBtn" onclick="updatePassword()">Update password</button>
+          <button class="auth-forgot-link" type="button" onclick="switchTab('login')">Back to login</button>
+        </div>
+      </div>
     </div>
-    <div class="auth-card">
-      <div class="auth-tabs">
-        <div class="auth-tab active" onclick="switchTab('login')">Sign In</div>
-        <div class="auth-tab" onclick="switchTab('register')">Join Klasora</div>
-      </div>
-      <div id="loginForm">
-        <div class="field"><label>Email</label><input type="email" id="lEmail" placeholder="student@university.edu"></div>
-        <div class="field"><label>Password</label><input type="password" id="lPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
-        <div class="auth-error" id="lErr"></div>
-        <button class="auth-btn" id="loginBtn" onclick="doLogin()">Sign In →</button>
-        <button class="auth-btn" style="margin-top:0.6rem;background:#fff;color:#222;border:1px solid #ddd" onclick="signInWithGoogle()">Continue with Google</button>
-        <button class="auth-btn" style="margin-top:0.6rem;background:transparent;color:var(--text2);border:1px solid var(--border)" onclick="showForgotPassword()">Forgot password?</button>
-      </div>
-      <div id="registerForm" style="display:none">
-        <div class="field"><label>Your Name</label><input type="text" id="rName" placeholder="e.g. Jordan Lee"></div>
-        <div class="field"><label>Email</label><input type="email" id="rEmail" placeholder="student@university.edu"></div>
-        <div class="field"><label>Password</label><input type="password" id="rPass" placeholder="Min 8 characters"></div>
-        <div class="auth-error" id="rErr"></div>
-        <button class="auth-btn" id="regBtn" onclick="doRegister()">Create Account →</button>
-      </div>
-      <div id="forgotForm" style="display:none">
-        <div class="field"><label>Email</label><input type="email" id="forgotEmail" placeholder="student@university.edu"></div>
-        <div class="auth-error" id="forgotErr"></div>
-        <div id="forgotMsg" style="display:none;color:var(--text2);font-size:0.78rem;line-height:1.5;margin-bottom:0.8rem;"></div>
-        <button class="auth-btn" id="forgotBtn" onclick="requestPasswordReset()">Send Reset Link →</button>
-        <button class="auth-btn" style="margin-top:0.6rem;background:transparent;color:var(--text2);border:1px solid var(--border)" onclick="switchTab('login')">Back to sign in</button>
-      </div>
-      <div id="resetForm" style="display:none">
-        <div class="field"><label>New Password</label><input type="password" id="resetPass" placeholder="Min 8 characters"></div>
-        <div class="auth-error" id="resetErr"></div>
-        <button class="auth-btn" id="resetBtn" onclick="updatePassword()">Update Password →</button>
-      </div>
-    </div>
-  </div>
+  </section>
+  <aside class="auth-brand-panel" aria-label="Klasora — Your clique, your circle, your campus">
+    <div class="auth-brand-mark"><img src="/klasora-icon.png" alt=""></div>
+    <div class="auth-brand-copy"><strong>KLASORA</strong><span>YOUR CLIQUE, YOUR CIRCLE, YOUR CAMPUS</span><p>A place to connect with your people, stay on top of class, and make progress together.</p></div>
+  </aside>
 </div>
 
 <!-- APP -->
@@ -468,10 +534,10 @@ video{border-radius:16px;background:#000;object-fit:cover;}
   <div class="sidebar">
     <div class="sidebar-top">
       <div class="sidebar-logo">
-        <img class="brand-logo-sidebar" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">
+        <img class="brand-logo-sidebar" src="/klasora-icon.png" alt="Klasora">
         <div class="top-actions">
           <button class="icon-pill" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
-          <button class="icon-pill" onclick="switchTab2('settings')" title="Settings">⚙️</button>
+          <button class="icon-pill" onclick="window.KlasoraRefresh?.navigate('settings')" title="Settings">⚙️</button>
           <button class="icon-pill" onclick="doLogout()" title="Sign out">🚪</button>
         </div>
       </div>
@@ -483,15 +549,19 @@ video{border-radius:16px;background:#000;object-fit:cover;}
         <div class="uhandle" id="myHandle">—</div>
       </div>
     </div>
+    <div class="workspace-primary-tabs" role="tablist" aria-label="Messages and courses">
+      <button id="primary-chats" class="active" type="button" role="tab" aria-selected="true" onclick="switchTab2('chats')"><span>◉</span>Cliques</button>
+      <button id="primary-courses" type="button" role="tab" aria-selected="false" onclick="switchTab2('courses')"><span>▤</span>Courses</button>
+    </div>
     <div class="sub-nav" id="chatSubNav">
-      <button id="sub-dms" class="active" onclick="switchTab2('chats')">Direct</button>
-      <button id="sub-groups" onclick="setChatMode('cliques')">Groups</button>
-      <button id="sub-status" onclick="switchTab2('status')">Status</button>
-      <button id="sub-calls" onclick="switchTab2('calls')">Calls</button>
+      <button id="sub-dms" class="active" onclick="switchTab2('chats')"><span class="legacy-tab-icon">◉</span>Direct</button>
+      <button id="sub-groups" style="display:none" onclick="setChatMode('cliques')"><span class="legacy-tab-icon">◎</span>Groups</button>
+      <button id="sub-calls" onclick="switchTab2('calls')"><span class="legacy-tab-icon">⌕</span>Calls</button>
     </div>
     <div class="sub-nav" id="courseSubNav" style="display:none;">
-      <button id="sub-homework" onclick="switchTab2('homework')">📚 Homework</button>
-      <button id="sub-notes" onclick="switchTab2('notes')">📝 Notes</button>
+      <button id="sub-courses" class="active" onclick="switchTab2('courses')"><span class="legacy-tab-icon">▤</span>Courses</button>
+      <button id="sub-homework" onclick="switchTab2('homework')"><span class="legacy-tab-icon">✓</span>Homework</button>
+      <button id="sub-notes" onclick="switchTab2('notes')"><span class="legacy-tab-icon">▤</span>Notes</button>
     </div>
 
     <!-- CREATE COURSE MODAL -->
@@ -525,7 +595,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
   <!-- CHAT AREA -->
   <div class="chat-area">
     <div class="no-chat-screen" id="noChatScreen">
-      <svg width="60" height="60" viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="16" fill="url(#nc)" fill-opacity="0.12"/><circle cx="20" cy="24" r="7" fill="url(#nc)" fill-opacity="0.5"/><circle cx="36" cy="24" r="7" fill="url(#nc)" fill-opacity="0.3"/><ellipse cx="28" cy="37" rx="11" ry="6" fill="url(#nc)" fill-opacity="0.4"/><circle cx="28" cy="24" r="4" fill="url(#nc)" fill-opacity="0.6"/><defs><linearGradient id="nc" x1="0" y1="0" x2="56" y2="56"><stop stop-color="#9d97ff"/><stop offset="1" stop-color="#ff6b9d"/></linearGradient></defs></svg>
+      <svg width="60" height="60" viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="16" fill="url(#nc)" fill-opacity="0.12"/><circle cx="20" cy="24" r="7" fill="url(#nc)" fill-opacity="0.5"/><circle cx="36" cy="24" r="7" fill="url(#nc)" fill-opacity="0.3"/><ellipse cx="28" cy="37" rx="11" ry="6" fill="url(#nc)" fill-opacity="0.4"/><circle cx="28" cy="24" r="4" fill="url(#nc)" fill-opacity="0.6"/><defs><linearGradient id="nc" x1="0" y1="0" x2="56" y2="56"><stop stop-color="#46d3bf"/><stop offset="1" stop-color="#087e7b"/></linearGradient></defs></svg>
       <div class="nc-title">Welcome to Klasora</div>
       <div class="nc-sub">Select a DM or Clique, or use the tabs to study smarter</div>
     </div>
@@ -538,11 +608,11 @@ video{border-radius:16px;background:#000;object-fit:cover;}
           <div class="ch-sub" id="chSub"></div>
         </div>
         <div class="hdr-btns">
-          <div class="hdr-btn" id="voiceCallBtn" style="display:none" onclick="startCall('voice')" title="Voice call">📞</div>
-          <div class="hdr-btn" id="videoCallBtn" style="display:none" onclick="startCall('video')" title="Video call">📹</div>
-          <div class="hdr-btn" id="membersBtn"   style="display:none" onclick="showMembers()">👥</div>
-          <div class="hdr-btn" id="courseFilesBtn" style="display:none" onclick="showCourseFiles()">📁</div>
-          <div class="hdr-btn" id="aiToggleBtn"  onclick="toggleAI()" title="Toggle AI assistant">🤖</div>
+          <button type="button" class="hdr-btn" id="voiceCallBtn" style="display:none" onclick="startCall('voice')" title="Voice call" aria-label="Voice call">⌕</button>
+          <button type="button" class="hdr-btn" id="videoCallBtn" style="display:none" onclick="startCall('video')" title="Video call" aria-label="Video call">▣</button>
+          <button type="button" class="hdr-btn" id="membersBtn" style="display:none" onclick="showMembers()" title="View members" aria-label="View members">♙</button>
+          <button type="button" class="hdr-btn" id="courseFilesBtn" style="display:none" onclick="showCourseFiles()" title="Course files" aria-label="Course files">▤</button>
+          <button type="button" class="hdr-btn" id="aiToggleBtn" onclick="toggleAI()" title="Toggle AI assistant" aria-label="Toggle AI assistant">✧</button>
         </div>
       </div>
       <div class="messages" id="messages"></div>
@@ -582,16 +652,26 @@ video{border-radius:16px;background:#000;object-fit:cover;}
       </div>
     </div>
   </div>
+  <aside class="workspace-details" id="workspaceDetails" aria-label="Conversation details">
+    <div class="workspace-details-empty">
+      <div class="workspace-details-mark">◈</div>
+      <strong>Room details</strong>
+      <span>Choose a conversation or course to see its people and helpful shortcuts.</span>
+    </div>
+  </aside>
 </div>
 <nav class="mobile-bottom-nav" aria-label="Main navigation">
-  <button id="mobile-nav-dms" class="active" onclick="switchTab2('chats')"><span>💬</span>Chats</button>
-  <button id="mobile-nav-courses" onclick="switchTab2('courses')"><span>🎓</span>Courses</button>
-  <button id="mobile-nav-pomodoro" onclick="switchTab2('pomodoro')"><span>🍅</span>Focus</button>
-  <button id="mobile-nav-settings" onclick="switchTab2('settings')"><span>⚙️</span>Settings</button>
+  <button id="mobile-nav-home" onclick="window.KlasoraRefresh?.navigate('feed')"><span>◈</span>Home</button>
+  <button id="mobile-nav-cliques" onclick="window.KlasoraRefresh?.navigate('cliques')"><span>◉</span>Cliques</button>
+  <button id="mobile-nav-focus" onclick="window.KlasoraRefresh?.navigate('focus')"><span>◎</span>Study capsule</button>
+  <button id="mobile-nav-timetable" onclick="window.KlasoraRefresh?.navigate('timetable')"><span>▦</span>Timetable</button>
+  <button id="mobile-nav-assignments" onclick="window.KlasoraRefresh?.navigate('assignments')"><span>✓</span>Assignments & tasks</button>
+  <button id="mobile-nav-courses" onclick="window.KlasoraRefresh?.navigate('courses')"><span>▤</span>Courses</button>
 </nav>
 
 <!-- CALL OVERLAY -->
 <div class="call-overlay" id="callOverlay">
+  <div class="call-brand"><span>☎</span> KLASORA</div>
   <div class="call-videos" id="callVideos" style="display:none;">
     <video id="remoteVideo" autoplay playsinline></video>
     <video id="localVideo"  autoplay playsinline muted></video>
@@ -599,9 +679,12 @@ video{border-radius:16px;background:#000;object-fit:cover;}
   <div class="call-avatar" id="callAvatar"></div>
   <div class="call-name"   id="callName"></div>
   <div class="call-status" id="callStatus">Calling…</div>
+  <div class="call-duration" id="callDuration">00:00</div>
   <div class="call-btns">
-    <button class="call-btn mute" id="muteBtn" onclick="toggleMute()" title="Mute">🎤</button>
-    <button class="call-btn end"  onclick="endCall()">📵</button>
+    <button class="call-btn mute" id="speakerBtn" onclick="toggleSpeaker()" title="Speaker" aria-label="Toggle speaker">◖))</button>
+    <button class="call-btn mute" id="muteBtn" onclick="toggleMute()" title="Mute" aria-label="Mute microphone">🎙</button>
+    <button class="call-btn mute" id="cameraBtn" onclick="toggleCamera()" title="Turn camera off" aria-label="Turn camera off" hidden>▣</button>
+    <button class="call-btn end" onclick="endCall()" title="End call" aria-label="End call">☎</button>
   </div>
 </div>
 
@@ -750,30 +833,54 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 </div>
 
 <script>
-const COLORS        = ['#6c63ff','#ff6b9d','#22d97a','#ff9f43','#0abde3','#ee5a24','#10ac84','#5f27cd','#ff6348','#2ed573'];
+const COLORS        = ['#087e7b','#ff6b9d','#22d97a','#ff9f43','#0abde3','#ee5a24','#10ac84','#5f27cd','#ff6348','#2ed573'];
 const EMOJIS        = ['😊','😂','🔥','❤️','👍','👏','😭','🎉','😎','🙌','💯','🤓','📚','✨','💪'];
 const CLIQUE_EMOJIS = ['📚','🎮','🏀','🎵','💻','🎨','⚽','🍕','✈️','🎭','🔬','📸','🏋️','🎯','💡'];
-const SERVER_URL    = '';
+let SERVER_URL      = '';
 
-let socket=null, token=localStorage.getItem('meno_token')||null, myUser=JSON.parse(localStorage.getItem('meno_user')||'null');
+let authStorage=sessionStorage.getItem('meno_token')?sessionStorage:localStorage;
+let socket=null, socketClientPromise=null, socketConnectionNoticeShown=false, token=authStorage.getItem('meno_token')||null, myUser=JSON.parse(authStorage.getItem('meno_user')||'null');
 let pendingAttachment=null, pendingAttachmentPreviewUrl=null;
 let mediaRecorder=null, recordingStream=null, voiceChunks=[], pendingVoiceBlob=null, voicePreviewUrl=null, discardVoiceRecording=false;
 let activeId=null, activeType=null, activeRoomId=null;
+let activeChatRequest=0;
 const studyQuizzes=new Map();
 let allItems=[], sideTab='chats', chatMode='dms';
 let selCliqueEmoji=CLIQUE_EMOJIS[0];
 let typTimer=null, typingUsers={};
 let aiVisible=false;
 
+function persistAuthSession(nextToken,nextUser,remember=true){
+  authStorage=remember?localStorage:sessionStorage;
+  const otherStorage=remember?sessionStorage:localStorage;
+  otherStorage.removeItem('meno_token');
+  otherStorage.removeItem('meno_user');
+  authStorage.setItem('meno_token',nextToken);
+  authStorage.setItem('meno_user',JSON.stringify(nextUser));
+}
+function persistAuthUser(user){
+  if(token) authStorage.setItem('meno_user',JSON.stringify(user));
+}
+
 // ── POMODORO STATE ────────────────────────────────────────────
 let pomState={ mode:'focus', running:false, secs:25*60, total:25*60, interval:null, sessToday:0, sessAll:0 };
 const POM_MODES = { focus:25*60, short:5*60, long:15*60 };
 
 // ── WEBRTC STATE ──────────────────────────────────────────────
-let pc=null, localStream=null, callType=null, callPeer=null, callPeerName=null, callPeerColor=null, muted=false;
+let pc=null, localStream=null, callType=null, callPeer=null, callPeerName=null, callPeerColor=null, callDirection=null, callRoomId=null, muted=false, speakerMuted=false, callLogId=null, callConnectedAt=null, callDurationTimer=null, callRingTimer=null;
 
 // ── INIT ──────────────────────────────────────────────────────
 async function init() {
+  try{
+    const response=await fetch('/api/config',{cache:'no-store'});
+    const config=await response.json();
+    if(!response.ok||typeof config.backendUrl!=='string') throw new Error('Backend configuration is unavailable');
+    SERVER_URL=config.backendUrl.replace(/\/+$/,'');
+  }catch(error){
+    console.error('Backend configuration unavailable:',error);
+    SERVER_URL='';
+    showToast('⚠️','Chat server configuration unavailable','Using this site’s API; real-time chat may not connect.');
+  }
   applyTheme(localStorage.getItem('meno_theme')||'dark');
   if(location.search.includes('reset=1')){ showAuth(); showResetPassword(); return; }
   const oauthParams=new URLSearchParams(location.hash.slice(1));
@@ -782,13 +889,13 @@ async function init() {
     try{
       const d=await api('/api/auth/sync','POST',{accessToken:oauthAccessToken});
       token=d.token; myUser=d.user;
-      localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser));
+      persistAuthSession(token,myUser);
       history.replaceState(null,'',location.pathname);
       showApp();
       return;
     }catch(e){ clearAuth(); showAuth(); document.getElementById('lErr').textContent=e.message; document.getElementById('lErr').style.display='block'; return; }
   }
-  if(token&&myUser){ try{ myUser=await api('/api/me'); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp(); }catch{ clearAuth(); showAuth(); } }
+  if(token&&myUser){ try{ myUser=await api('/api/me'); persistAuthUser(myUser); showApp(); }catch{ clearAuth(); showAuth(); } }
   else showAuth();
 }
 
@@ -796,25 +903,38 @@ async function init() {
 async function api(path, method='GET', body=null){
   const opts={method,headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})}};
   if(body) opts.body=JSON.stringify(body);
-  const res=await fetch(SERVER_URL+path,opts);
+  const res=await fetch(apiUrl(path),opts);
   const data=await res.json();
   if(!res.ok) throw new Error(data.error||'Request failed');
   return data;
 }
+function apiUrl(path){return `${SERVER_URL}${path}`;}
 
 // ── AUTH ──────────────────────────────────────────────────────
 function switchTab(t){
-  document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(t==='login'&&i===0)||(t==='register'&&i===1)));
+  document.getElementById('authScreen').classList.remove('is-forgot','is-reset');
+  document.querySelectorAll('.auth-tab').forEach((el,i)=>{
+    const active=(t==='login'&&i===0)||(t==='register'&&i===1);
+    el.classList.toggle('active',active);
+    el.setAttribute('aria-selected',String(active));
+  });
   document.getElementById('loginForm').style.display=t==='login'?'block':'none';
   document.getElementById('registerForm').style.display=t==='register'?'block':'none';
   document.getElementById('forgotForm').style.display='none';
   document.getElementById('resetForm').style.display='none';
+  document.getElementById('authHeading').textContent=t==='register'?'Create an account':'Welcome back';
+  document.getElementById('authSubheading').textContent=t==='register'?'Join your classes and campus community.':'Log in to continue to your classes.';
 }
 function showForgotPassword(){
+  document.getElementById('authScreen').classList.add('is-forgot');
   document.getElementById('loginForm').style.display='none';
   document.getElementById('registerForm').style.display='none';
   document.getElementById('forgotForm').style.display='block';
-  document.querySelectorAll('.auth-tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.auth-tab').forEach(el=>{el.classList.remove('active');el.setAttribute('aria-selected','false');});
+  const loginEmail=document.getElementById('lEmail').value.trim();
+  if(loginEmail&&!document.getElementById('forgotEmail').value)document.getElementById('forgotEmail').value=loginEmail;
+  document.getElementById('authHeading').textContent='Welcome back';
+  document.getElementById('authSubheading').textContent="Enter the email you signed up with and we'll send you a link to reset it.";
 }
 async function requestPasswordReset(){
   const email=document.getElementById('forgotEmail').value.trim(), err=document.getElementById('forgotErr'), msg=document.getElementById('forgotMsg'), btn=document.getElementById('forgotBtn');
@@ -824,14 +944,17 @@ async function requestPasswordReset(){
     const d=await api('/api/auth/forgot-password','POST',{email});
     msg.textContent=d.message; msg.style.display='block';
   }catch(e){ err.textContent=e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent='Send Reset Link →'; }
+  finally{ btn.disabled=false; btn.textContent='Send reset link'; }
 }
 function showResetPassword(){
+  document.getElementById('authScreen').classList.add('is-reset');
   document.getElementById('loginForm').style.display='none';
   document.getElementById('registerForm').style.display='none';
   document.getElementById('forgotForm').style.display='none';
   document.getElementById('resetForm').style.display='block';
-  document.querySelectorAll('.auth-tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.auth-tab').forEach(el=>{el.classList.remove('active');el.setAttribute('aria-selected','false');});
+  document.getElementById('authHeading').textContent='Set a new password';
+  document.getElementById('authSubheading').textContent='Choose a new password for your Klasora account.';
 }
 async function updatePassword(){
   const password=document.getElementById('resetPass').value, err=document.getElementById('resetErr'), btn=document.getElementById('resetBtn');
@@ -841,31 +964,40 @@ async function updatePassword(){
   if(!accessToken){ err.textContent='This reset link is invalid or expired'; err.style.display='block'; return; }
   btn.disabled=true; btn.textContent='Updating…';
   try{
-    const res=await fetch('/api/auth/update-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken,password})});
+    const res=await fetch(apiUrl('/api/auth/update-password'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken,password})});
     const data=await res.json(); if(!res.ok) throw new Error(data.error||'Request failed');
     history.replaceState(null,'',location.pathname); switchTab('login');
     document.getElementById('lErr').textContent='Password updated. Sign in with your new password.';
     document.getElementById('lErr').style.display='block';
   }catch(e){ err.textContent=e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent='Update Password →'; }
+  finally{ btn.disabled=false; btn.textContent='Update password'; }
 }
 async function doLogin(){
   const email=document.getElementById('lEmail').value.trim(), password=document.getElementById('lPass').value;
   const err=document.getElementById('lErr'), btn=document.getElementById('loginBtn');
   err.style.display='none'; btn.disabled=true; btn.textContent='Signing in…';
-  try{ const d=await api('/api/login','POST',{email,password}); token=d.token; myUser=d.user; localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp(); }
+  try{ const d=await api('/api/login','POST',{email,password}); token=d.token; myUser=d.user; persistAuthSession(token,myUser,document.getElementById('rememberMe').checked); showApp(); }
   catch(e){ err.textContent=e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent='Sign In →'; }
+  finally{ btn.disabled=false; btn.textContent='Login'; }
 }
 async function signInWithGoogle(){
-  const err=document.getElementById('lErr');
-  err.style.display='none';
+  const btn=document.querySelector('[onclick="signInWithGoogle()"]');
+  const error=document.getElementById('googleAuthError');
+  error.style.display='none';
+  btn.disabled=true;
+  btn.lastChild.textContent='Connecting to Google…';
   try{
-    const res=await fetch('/api/auth/google');
+    const res=await fetch(apiUrl('/api/auth/google'));
     const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Google sign-in is unavailable');
+    if(!res.ok) throw new Error(data.error||'Google sign-in could not be started. Please try again.');
+    if(!data.url) throw new Error('Google sign-in could not be started. Please try again.');
     location.href=data.url;
-  }catch(e){ err.textContent=e.message; err.style.display='block'; }
+  }catch(e){
+    error.textContent=e.message;
+    error.style.display='block';
+    btn.lastChild.textContent='Continue with Google';
+    btn.disabled=false;
+  }
 }
 async function doRegister(){
   const name=document.getElementById('rName').value.trim(), email=document.getElementById('rEmail').value.trim(), password=document.getElementById('rPass').value;
@@ -880,14 +1012,18 @@ async function doRegister(){
     if(d.needsVerification){
       err.textContent=d.message; err.style.display='block'; return;
     }
-    token=d.token; myUser=d.user; localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp();
+    token=d.token; myUser=d.user; persistAuthSession(token,myUser); showApp();
   }
   catch(e){ err.textContent=e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent='Create Account →'; }
+  finally{ btn.disabled=false; btn.textContent='Sign up'; }
 }
-function clearAuth(){ token=null; myUser=null; localStorage.removeItem('meno_token'); localStorage.removeItem('meno_user'); }
-function doLogout(){ if(socket)socket.disconnect(); clearAuth(); document.getElementById('appScreen').classList.remove('show'); showAuth(); }
-function showAuth(){ document.getElementById('authScreen').style.display='flex'; document.getElementById('appScreen').classList.remove('show'); }
+function clearAuth(){ token=null; myUser=null; localStorage.removeItem('meno_token'); localStorage.removeItem('meno_user'); sessionStorage.removeItem('meno_token'); sessionStorage.removeItem('meno_user'); }
+function doLogout(){ if(socket)socket.disconnect(); window.KlasoraRefresh?.close(); clearAuth(); document.getElementById('appScreen').classList.remove('show'); showAuth(); }
+function showAuth(){
+  document.getElementById('authScreen').style.display='';
+  document.getElementById('appScreen').classList.remove('show');
+  if(token) document.getElementById('rememberMe').checked=authStorage===localStorage;
+}
 
 // ── THEME ─────────────────────────────────────────────────────
 function applyTheme(t){
@@ -910,12 +1046,51 @@ function showApp(){
   renderMyProfile(); buildEp(); buildCliqueEmojiGrid();
   connectSocket(); loadList();
   setupPushNotifications();
+  window.KlasoraBridge={
+    api,
+    get user(){return myUser;},
+    get theme(){return document.documentElement.getAttribute('data-theme')||'dark';},
+    get notificationsEnabled(){return localStorage.getItem('meno_notifications')!=='off';},
+    get cliques(){return allItems.filter(item=>item._chatType==='clique');},
+    openModal,
+    editProfile,
+    switchTab2,
+    setChatMode,
+    openChat,
+    openRefreshedChat(item,items){
+      const type=item?._chatType||'dm';
+      sideTab=type==='course'?'courses':'chats';
+      chatMode=type==='clique'?'cliques':'dms';
+      allItems=items||[];
+      return openChat({...item,_chatType:type});
+    },
+    startRefreshedCall(item,items,type='voice'){
+      const other=item&&getOther(item);
+      if(!other) return Promise.reject(new Error('This conversation has no other participant.'));
+      sideTab='chats'; chatMode='dms'; allItems=items||[];
+      return openChat({...item,_chatType:'dm'}).then(()=>startCall(type));
+    },
+    renderWorkspaceDetails,
+    toggleTheme,
+    setNotificationPreference:updateNotificationPreference,
+    getProfile:()=>api('/api/me/profile'),
+    logout:doLogout,
+    updateProfile:async changes=>{
+      const profile=await api('/api/me/profile','PATCH',changes);
+      myUser={...myUser,name:profile.name,bio:profile.bio,color:profile.color,theme:profile.theme};
+      persistAuthUser(myUser);
+      renderMyProfile();
+      return profile;
+    },
+    refreshAssignments:()=>window.KlasoraRefresh?.renderAssignments()
+  };
+  window.KlasoraRefresh?.open();
   if(localStorage.getItem('meno_intro_seen')!=='1') setTimeout(showIntro,450);
 }
 const INTRO_STEPS=[
-  {art:'💬',kicker:'Chats',title:'Talk to your people',copy:'Keep direct conversations and groups together. Use Direct and Groups to switch between one-to-one chats and Cliques.'},
+  {art:'💬',kicker:'Cliques',title:'Talk to your people',copy:'Keep direct messages and group conversations together in one familiar chat space.'},
   {art:'🎓',kicker:'Courses',title:'Study in your own spaces',copy:'Create private course rooms, share notes, manage assignments, and keep course files close to the conversation.'},
-  {art:'🍅',kicker:'Focus',title:'Make progress, one session at a time',copy:'Use Focus to run a Pomodoro session and build a study rhythm without leaving Klasora.'},
+  {art:'🍅',kicker:'Study capsule',title:'Make progress, one session at a time',copy:'Use your Study Capsule to run a focus session and build a study rhythm without leaving Klasora.'},
   {art:'⚙️',kicker:'Settings',title:'Make Klasora yours',copy:'Change your theme, manage notifications, and find account controls from Settings whenever you need them.'}
 ];
 let introStep=0;
@@ -923,7 +1098,7 @@ function showIntro(){introStep=0;renderIntro();document.getElementById('introOve
 function renderIntro(){
   const step=INTRO_STEPS[introStep];
   const art=document.getElementById('introArt');
-  if(introStep===0)art.innerHTML='<img class="brand-logo-intro" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">';
+  if(introStep===0)art.innerHTML='<img class="brand-logo-intro" src="/klasora-wordmark.png" alt="Klasora">';
   else art.textContent=step.art;
   document.getElementById('introKicker').textContent=step.kicker;
   document.getElementById('introTitle').textContent=step.title;
@@ -935,17 +1110,63 @@ function renderIntro(){
 function nextIntro(){if(introStep<INTRO_STEPS.length-1){introStep++;renderIntro();}else finishIntro();}
 function finishIntro(){localStorage.setItem('meno_intro_seen','1');document.getElementById('introOverlay').classList.remove('show');}
 function renderMyProfile(){
-  const av=document.getElementById('myAv'); av.style.background=(myUser.color||'#6c63ff')+'22'; av.style.color=myUser.color||'#6c63ff';
+  const av=document.getElementById('myAv'); av.style.background=(myUser.color||'#087e7b')+'22'; av.style.color=myUser.color||'#087e7b';
   av.innerHTML=ini(myUser.name)+'<div class="av-dot dot-on"></div>';
   document.getElementById('myName').textContent=myUser.name;
   document.getElementById('myHandle').textContent=myUser.email;
 }
 
 // ── SOCKET ────────────────────────────────────────────────────
-function connectSocket(){
+function loadSocketClient(){
+  if(typeof io==='function')return Promise.resolve();
+  if(socketClientPromise)return socketClientPromise;
+  socketClientPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src=apiUrl('/socket.io/socket.io.js');
+    script.async=true;
+    script.onload=()=>{
+      if(typeof io==='function'){resolve();return;}
+      socketClientPromise=null;
+      reject(new Error('The chat server did not provide its realtime client.'));
+    };
+    script.onerror=()=>{
+      socketClientPromise=null;
+      reject(new Error('The realtime chat client could not be loaded.'));
+    };
+    document.head.appendChild(script);
+  });
+  return socketClientPromise;
+}
+async function connectSocket(){
+  try{await loadSocketClient();}
+  catch(error){
+    console.error('Realtime chat client unavailable:',error);
+    showToast('⚠️','Live chat unavailable','Could not load the chat client from the configured backend.');
+    return;
+  }
   if(socket) socket.disconnect();
   socket=io(SERVER_URL,{auth:{token}});
-  socket.on('new_message', msg=>{ if(msg.roomId===activeRoomId) appendMessage(msg); else showToast('💬',msg.senderName||'Someone',msg.text||'Sent a file'); updateListPreview(msg.roomId,msg.text||msg.fileName||'File'); });
+  socket.on('connect',()=>{
+    if(socketConnectionNoticeShown) showToast('✅','Chat connection restored','Live messages are available again.');
+    socketConnectionNoticeShown=false;
+  });
+  socket.on('connect_error',error=>{
+    console.error('Realtime chat connection failed:',error);
+    if(socketConnectionNoticeShown) return;
+    socketConnectionNoticeShown=true;
+    showToast('⚠️','Live chat unavailable','The chat server is disconnected. Messages and calls may not work.');
+  });
+  socket.on('new_message', msg=>{
+    if(msg.roomId===activeRoomId){
+      appendMessage(msg);
+      socket.emit('mark_room_read',{roomId:msg.roomId});
+    }else if(msg.senderId!==myUser._id){
+      window.KlasoraRefresh?.notifyChat(msg.roomId,msg.senderName);
+      notifyBrowserAlert('New message',`${msg.senderName||'Someone'} sent you a message.`,`/?roomId=${encodeURIComponent(msg.roomId)}`);
+      if(!window.KlasoraRefresh) showToast('💬',msg.senderName||'Someone','Sent you a message');
+    }
+    updateListPreview(msg.roomId,msg.text||msg.fileName||'File');
+  });
   socket.on('message_updated', msg=>{ if(msg.roomId===activeRoomId){ const b=document.querySelector(`[data-msgid="${msg._id}"]`); if(b) refreshReactions(b,msg); } });
   socket.on('message_deleted', ({msgId,roomId})=>{ if(roomId===activeRoomId) removeMessage(msgId); });
   socket.on('message_status', ({msgId,status,deliveredAt,readBy})=>updateMessageStatus(msgId,status,deliveredAt,readBy));
@@ -953,76 +1174,31 @@ function connectSocket(){
   socket.on('typing', ({roomId,userId,isTyping})=>{ if(roomId!==activeRoomId||userId===myUser._id)return; typingUsers[userId]=isTyping; const activeTyping=Object.entries(typingUsers).filter(([id,typing])=>typing&&id!==myUser._id).map(([id])=>typingUserName(id)); const any=activeTyping.length>0; document.getElementById('typInd').style.display=any?'flex':'none'; if(any)document.getElementById('typTxt').textContent=activeTyping.length===1?`${activeTyping[0]} is typing…`:`${activeTyping.length} people are typing…`; });
   // WebRTC signaling
   socket.on('call_offer',  d=>handleIncomingCall(d));
-  socket.on('call_answer', d=>{ if(pc) pc.setRemoteDescription(new RTCSessionDescription(d.answer)); });
+  socket.on('call_answer', async d=>{ if(pc){await pc.setRemoteDescription(new RTCSessionDescription(d.answer)); markCallConnected();} });
   socket.on('call_ice',    d=>{ if(pc) pc.addIceCandidate(new RTCIceCandidate(d.candidate)).catch(()=>{}); });
-  socket.on('call_end',    ()=>endCall());
-  socket.on('call_reject', ()=>{ endCall(); showToast('📵','Call declined',''); });
+  socket.on('call_end',    d=>{
+    const missed=d?.missed&&callDirection==='incoming'&&callPeer===d.from;
+    const missedName=callPeerName;
+    endCall(false,callConnectedAt?'ended':callDirection==='incoming'?'missed':'cancelled');
+    if(missed){
+      window.KlasoraRefresh?.notifyMissedCall(missedName);
+      notifyBrowserAlert('Missed call',`${missedName||'A Klasora member'} tried to reach you.`,'/?calls=1');
+      if(!window.KlasoraRefresh) showToast('☎','Missed call',`From ${missedName||'a Klasora member'}`);
+    }
+  });
+  socket.on('call_reject', ()=>{ endCall(false,'declined'); showToast('📵','Call declined',''); });
 }
 
 // ── NAV TABS ──────────────────────────────────────────────────
 function switchTab2(t){
-  closeMobileChat();
-  const mobileSection=t;
-  if(t==='community')chatMode='cliques';
-  if(t==='dms'||t==='cliques') t='chats';
-  sideTab=t;
-  const mainTab=t==='homework'||t==='notes'?'courses':t;
-  ['chats','courses','pomodoro','settings'].forEach(x=>{const el=document.getElementById(`tab-${x}`);if(el)el.classList.toggle('active',x===mainTab);});
-  ['dms','courses','pomodoro','settings'].forEach(x=>{const el=document.getElementById(`mobile-nav-${x}`);if(el)el.classList.toggle('active',x===(mainTab==='chats'?'dms':mainTab));});
-  document.getElementById('chatFilters').style.display=t==='chats'?'flex':'none';
-  document.getElementById('chatSubNav').style.display=mainTab==='chats'?'flex':'none';
-  document.getElementById('courseSubNav').style.display=mainTab==='courses'?'flex':'none';
-  ['sub-dms','sub-groups','sub-status','sub-calls','sub-homework','sub-notes'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
-  const subId=t==='chats'?(chatMode==='cliques'?'sub-groups':'sub-dms'):t==='status'?'sub-status':t==='calls'?'sub-calls':t==='homework'?'sub-homework':t==='notes'?'sub-notes':'';
-  if(subId)document.getElementById(subId)?.classList.add('active');
-  document.getElementById('chat-filter-dms').classList.toggle('active',chatMode==='dms');
-  document.getElementById('chat-filter-cliques').classList.toggle('active',chatMode==='cliques');
-  if(t==='status'){ renderStatusPanel(); return; }
-  if(t==='calls'){ renderCallsPanel(); return; }
-  if(t==='settings'){ renderSettingsPanel(); return; }
-  document.getElementById('searchWrap').style.display=t==='homework'||t==='notes'||t==='pomodoro'?'none':'block';
-  document.getElementById('addWrap').style.display=t==='homework'||t==='courses'||t==='notes'||t==='chats'?'flex':t==='pomodoro'?'none':'flex';
-  if(t==='chats'||t==='courses'){
-    document.getElementById('addBtnTxt').textContent=t==='chats'?(chatMode==='dms'?'New Message':'Create Group'):'Create Course';
-    document.getElementById('listSec').innerHTML='';
-    loadList();
-  } else if(t==='homework'){
-    document.getElementById('addBtnTxt').textContent='Add Assignment';
-    document.getElementById('addBtn').onclick=()=>openModal('hwModal');
-    loadHomework();
-  } else if(t==='notes'){
-    document.getElementById('addBtnTxt').textContent='Add Note';
-    document.getElementById('addBtn').onclick=()=>openModal('noteModal');
-    loadNotes();
-  } else if(t==='pomodoro'){
-    document.getElementById('addBtn').onclick=()=>{};
-    renderPomodoro();
-  }
-  function renderSettingsPanel(){
-    document.getElementById('searchWrap').style.display='none';
-    document.getElementById('addWrap').style.display='none';
-    document.getElementById('chatFilters').style.display='none';
-    const theme=document.documentElement.getAttribute('data-theme')||'dark';
-    const notifications=localStorage.getItem('meno_notifications')!=='off';
-    document.getElementById('listSec').innerHTML=`<div class="settings-panel">
-      <div class="settings-heading">Settings</div>
-      <div class="settings-subtitle">Make Klasora feel like yours</div>
-      <div class="settings-card settings-profile"><div class="avatar" style="background:${myUser.color||'#6c63ff'}22;color:${myUser.color||'#6c63ff'}">${ini(myUser.name)}</div><div><div class="li-name">${esc(myUser.name)}</div><div class="settings-detail">${esc(myUser.bio||myUser.email)}</div></div><button class="settings-edit" onclick="editProfile()">Edit</button></div>
-      <div class="settings-card">
-        <div class="settings-row"><div><div class="settings-label">Appearance</div><div class="settings-detail">Choose your Klasora theme</div></div><select class="settings-select" onchange="applyTheme(this.value);if(token)api('/api/me/theme','PATCH',{theme:this.value}).catch(()=>{})"><option value="dark" ${theme==='dark'?'selected':''}>Dark</option><option value="light" ${theme==='light'?'selected':''}>Light</option></select></div>
-        <div class="settings-row"><div><div class="settings-label">Notifications</div><div class="settings-detail">New message alerts</div></div><input class="settings-switch" type="checkbox" ${notifications?'checked':''} onchange="setNotificationPreference(this.checked)"></div>
-      </div>
-      <div class="settings-card"><button class="settings-danger" onclick="doLogout()">🚪 Sign out of Klasora</button></div>
-    </div>`;
-  }
-  function setNotificationPreference(enabled){
-    localStorage.setItem('meno_notifications',enabled?'on':'off');
-    if(enabled) setupPushNotifications();
-    showToast(enabled?'🔔':'🔕',enabled?'Notifications enabled':'Notifications paused',enabled?'You’ll receive new message alerts':'You can turn them back on anytime');
-  }
+  const destinations={home:'feed',community:'feed',dms:'cliques',chats:'cliques',cliques:'cliques',calls:'calls',courses:'courses',homework:'assignments',notes:'courses',pomodoro:'focus',settings:'settings'};
+  const destination=destinations[t];
+  if(destination==='calls') window.KlasoraRefresh?.openCalls();
+  else if(destination) window.KlasoraRefresh?.navigate(destination);
 }
 function setChatMode(mode){
   chatMode=mode;
+  window.KlasoraRefresh?.navigate('cliques');
   document.getElementById('chat-filter-dms').classList.toggle('active',mode==='dms');
   document.getElementById('chat-filter-cliques').classList.toggle('active',mode==='cliques');
   document.getElementById('addBtnTxt').textContent=mode==='dms'?'New Message':'Create Group';
@@ -1033,33 +1209,13 @@ function editProfile(){
   if(name===null)return;
   const bio=prompt('Short bio (optional)',myUser.bio||'');
   if(bio===null)return;
-  api('/api/me/profile','PATCH',{name,bio}).then(user=>{
-    myUser=user;
-    localStorage.setItem('meno_user',JSON.stringify(user));
+  api('/api/me/profile','PATCH',{name,bio}).then(profile=>{
+    myUser={...myUser,name:profile.name,bio:profile.bio};
+    persistAuthUser(myUser);
     renderMyProfile();
     switchTab2('settings');
     showToast('✅','Profile updated','Your profile changes are saved');
   }).catch(e=>showToast('⚠️','Could not update profile',e.message));
-}
-async function renderStatusPanel(){
-  document.getElementById('searchWrap').style.display='none';
-  document.getElementById('addWrap').style.display='none';
-  document.getElementById('listSec').innerHTML='<div class="loading-row"><div class="spinner"></div>&nbsp;Loading updates…</div>';
-  try{
-    const updates=await api('/api/status');
-    const rows=updates.map(update=>`<div class="wa-update"><div class="wa-status-ring"><div class="avatar" style="background:${update.user.color||'#6c63ff'}22;color:${update.user.color||'#6c63ff'}">${ini(update.user.name)}</div></div><div><strong>${esc(update.user.name)}</strong><div class="wa-panel-sub">${fmtDate(new Date(update.createdAt))}</div><div class="wa-update-text">${esc(update.text)}</div></div></div>`).join('');
-    document.getElementById('listSec').innerHTML=`<div class="wa-panel">
-      <div class="wa-panel-head"><div><div class="wa-panel-title">Status</div><div class="wa-panel-sub">Share a moment with your circle</div></div><button class="wa-action" onclick="createStatus()">＋ Add status</button></div>
-      <div class="wa-status-card"><div class="wa-status-ring"><div class="avatar" style="background:${myUser.color||'#6c63ff'}22;color:${myUser.color||'#6c63ff'}">${ini(myUser.name)}</div></div><div><strong>My status</strong><div class="wa-panel-sub">Visible for 24 hours</div></div></div>
-      <div class="wa-section-label">Recent updates</div>${rows||'<div class="wa-empty-card">No new updates yet.<br>Be the first to share something.</div>'}
-    </div>`;
-  }catch(e){document.getElementById('listSec').innerHTML=`<div class="wa-empty-card">${esc(e.message)}</div>`;}
-}
-async function createStatus(){
-  const text=prompt('Share a status update (500 characters max)');
-  if(text===null)return;
-  try{await api('/api/status','POST',{text});showToast('✨','Status posted','Your update is live for 24 hours');renderStatusPanel();}
-  catch(e){showToast('⚠️','Could not post status',e.message);}
 }
 async function renderCallsPanel(){
   document.getElementById('searchWrap').style.display='none';
@@ -1068,13 +1224,13 @@ async function renderCallsPanel(){
   try{
     const dms=await api('/api/dms');
     allItems=dms;
-    const rows=dms.filter(dm=>getOther(dm)).slice(0,8).map(dm=>{const o=getOther(dm);return `<div class="wa-call-row"><div class="avatar" style="background:${o.color||'#6c63ff'}22;color:${o.color||'#6c63ff'}">${ini(o.name)}</div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="wa-panel-sub">No recent calls</div></div><button class="wa-action" onclick="startCallFromList('${o._id}','${esc(o.name).replace(/'/g,"&#39;")}','${o.color||'#6c63ff'}')">📞</button></div>`;}).join('');
+    const rows=dms.filter(dm=>getOther(dm)).slice(0,8).map(dm=>{const o=getOther(dm);return `<div class="wa-call-row"><div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${ini(o.name)}</div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="wa-panel-sub">No recent calls</div></div><button class="wa-action" onclick="startCallFromList('${o._id}','${esc(o.name).replace(/'/g,"&#39;")}','${o.color||'#087e7b'}')">📞</button></div>`;}).join('');
     document.getElementById('listSec').innerHTML=`<div class="wa-panel"><div class="wa-panel-head"><div><div class="wa-panel-title">Calls</div><div class="wa-panel-sub">Voice and video calls</div></div><button class="wa-action" onclick="showToast('📞','Start a call','Open a chat to call someone')">＋ New call</button></div>${rows||'<div class="wa-empty-card">Your recent calls will appear here.</div>'}</div>`;
   }catch(e){document.getElementById('listSec').innerHTML=`<div class="wa-empty-card">${esc(e.message)}</div>`;}
 }
 function startCallFromList(userId,name,color){
   const dm=allItems.find(item=>getOther(item)?._id===userId);
-  if(dm){sideTab='chats';document.getElementById('mobile-nav-dms').classList.add('active');openChat(dm).then(()=>startCall('voice'));return;}
+  if(dm){sideTab='chats';document.getElementById('mobile-nav-cliques')?.classList.add('active');openChat(dm).then(()=>startCall('voice'));return;}
   showToast('📞','Open a conversation','Start a DM before calling');
 }
 function onAddBtn(){ if(sideTab==='chats')chatMode==='dms'?openModal('dmModal'):openModal('cliqueModal'); else if(sideTab==='courses')openModal('courseModal'); else if(sideTab==='homework')openModal('hwModal'); else if(sideTab==='notes')openModal('noteModal'); }
@@ -1100,9 +1256,9 @@ function renderList(items,filter=''){
     const time=item.lastAt?fmtTime(new Date(item.lastAt)):'', preview=item.lastMsg||'Say something!';
     if(item._chatType==='dm'||sideTab==='dms'){
       const o=getOther(item); if(!o)return;
-      div.innerHTML=`<div class="avatar" style="background:${o.color||'#6c63ff'}22;color:${o.color||'#6c63ff'}">${ini(o.name)}<div class="av-dot dot-off" data-pres="${o._id}"></div></div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
+      div.innerHTML=`<div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${ini(o.name)}<div class="av-dot dot-off" data-pres="${o._id}"></div></div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
     } else if(item._chatType==='clique'||sideTab==='cliques') {
-      div.innerHTML=`<div class="c-icon" style="background:${item.color||'#6c63ff'}22;">${item.emoji||'🔗'}</div><div class="li-info"><div class="li-name">${esc(item.name)} <span style="font-size:0.57rem;color:var(--accent2);background:var(--glow);padding:1px 5px;border-radius:7px;">CLIQUE</span></div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
+      div.innerHTML=`<div class="c-icon" style="background:${item.color||'#087e7b'}22;">${item.emoji||'🔗'}</div><div class="li-info"><div class="li-name">${esc(item.name)} <span style="font-size:0.57rem;color:var(--accent2);background:var(--glow);padding:1px 5px;border-radius:7px;">CLIQUE</span></div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
     } else {
       div.innerHTML=`<div class="c-icon" style="background:var(--accent)22;">🎓</div><div class="li-info"><div class="li-name">${esc(item.name)} <span style="font-size:0.57rem;color:var(--accent2);background:var(--glow);padding:1px 5px;border-radius:7px;">COURSE</span></div><div class="li-prev">${esc(item.code||item.description||'Private course space').slice(0,38)}</div></div>`;
     }
@@ -1134,11 +1290,15 @@ async function searchMessages(query){
 async function openSearchResult(result){
   const tab=result.roomType==='course'?'courses':result.roomType==='clique'?'cliques':'dms';
   sideTab=tab==='cliques'||tab==='dms'?'chats':tab;
-  if(tab==='cliques')chatMode='cliques';
   if(tab==='dms')chatMode='dms';
   const rooms=await api(tab==='courses'?'/api/courses':tab==='cliques'?'/api/cliques':'/api/dms');
   const item=rooms.find(room=>room.roomId===result.roomId||room._id===result.roomId);
   if(!item){showToast('⚠️','Conversation unavailable','You may no longer have access to this conversation.');return;}
+  if(tab==='cliques'){
+    document.getElementById('searchInp').value='';
+    window.KlasoraRefresh?.openCliqueChat(item,rooms);
+    return;
+  }
   allItems=rooms.map(room=>({...room,_chatType:tab==='cliques'?'clique':tab==='dms'?'dm':undefined}));
   document.getElementById('searchInp').value='';
   renderList(allItems);
@@ -1148,6 +1308,7 @@ function updateListPreview(roomId,text){ const item=allItems.find(x=>x.roomId===
 
 // ── OPEN CHAT ─────────────────────────────────────────────────
 async function openChat(item){
+  const requestId=++activeChatRequest;
   clearAttachment();
   clearVoiceNote();
   document.getElementById('appScreen').classList.add('mobile-chat-active');
@@ -1163,22 +1324,49 @@ async function openChat(item){
     document.getElementById('membersBtn').style.display='none';
     document.getElementById('courseFilesBtn').style.display='none';
     document.getElementById('voiceCallBtn').style.display='flex'; document.getElementById('videoCallBtn').style.display='flex';
-    callPeer=o._id; callPeerName=o.name; callPeerColor=o.color||'#6c63ff';
+    callPeer=o._id; callPeerName=o.name; callPeerColor=o.color||'#087e7b';
   } else {
-    av.textContent=isCourse?'🎓':(item.emoji||'🔗'); av.style.background=(item.color||'#6c63ff')+'22'; av.style.color=item.color||'#6c63ff'; av.style.borderRadius='12px';
+    av.textContent=isCourse?'🎓':(item.emoji||'🔗'); av.style.background=(item.color||'#087e7b')+'22'; av.style.color=item.color||'#087e7b'; av.style.borderRadius='12px';
     document.getElementById('chName').textContent=item.name; document.getElementById('chSub').textContent=isCourse?(item.code||'Private course space'):`${item.members?.length||0} members`;
     document.getElementById('membersBtn').style.display='flex';
     document.getElementById('courseFilesBtn').style.display=isCourse?'flex':'none';
     document.getElementById('voiceCallBtn').style.display='none'; document.getElementById('videoCallBtn').style.display='none';
   }
+  renderWorkspaceDetails(item);
   document.getElementById('typInd').style.display='none';
   socket?.emit('join_room',activeRoomId);
   document.getElementById('messages').innerHTML=`<div class="loading-row"><div class="spinner"></div>&nbsp;Loading…</div>`;
-  try{ const msgs=await api(`/api/messages/${activeRoomId}`); renderMsgs(msgs,item); socket?.emit('mark_room_read',{roomId:activeRoomId}); }catch{ document.getElementById('messages').innerHTML=`<div class="loading-row">Failed to load</div>`; }
+  try{ const msgs=await api(`/api/messages/${activeRoomId}`); if(requestId!==activeChatRequest)return; renderMsgs(msgs,item); socket?.emit('mark_room_read',{roomId:activeRoomId}); }catch{ if(requestId===activeChatRequest)document.getElementById('messages').innerHTML=`<div class="loading-row">Failed to load</div>`; }
   renderList(allItems);
 }
 function closeMobileChat(){
+  if(document.getElementById('appScreen')?.classList.contains('refresh-conversation-active')){
+    window.KlasoraRefresh?.backToConversations();
+    return;
+  }
   document.getElementById('appScreen')?.classList.remove('mobile-chat-active');
+}
+
+function renderWorkspaceDetails(item){
+  const pane=document.getElementById('workspaceDetails');
+  if(!pane)return;
+  if(!item){
+    pane.innerHTML='<div class="workspace-details-empty"><div class="workspace-details-mark">◈</div><strong>Room details</strong><span>Choose a conversation or course to see its people and helpful shortcuts.</span></div>';
+    return;
+  }
+  const type=item._chatType||activeType;
+  const isCourse=type==='course';
+  const isClique=type==='clique';
+  const other=isCourse||isClique?null:getOther(item);
+  const memberCount=isCourse||isClique?(item.members?.length||0):1;
+  const title=isCourse?'Course space':isClique?'Clique':'Direct message';
+  const detail=isCourse?(item.code||'Course workspace'):isClique?`${item.members?.length||0} members · Study and chat together`:(other?.online?'Online now':'Your private conversation');
+  const description=isCourse?item.description:'';
+  const members=(item.members||[]).slice(0,5).map(member=>`<div class="workspace-detail-person"><span class="workspace-detail-avatar">${esc(ini(member.name))}</span><span>${esc(member.name||'Clique member')}</span></div>`).join('');
+  const person=other?`<div class="workspace-detail-person"><span class="workspace-detail-avatar">${esc(ini(other.name))}</span><span>${esc(other.name)}</span></div>`:'';
+  const isCliqueAdmin=isClique&&String(item.createdBy||'')===String(myUser._id||'');
+  const actions=isCourse?'<button type="button" class="workspace-detail-action" onclick="showCourseFiles()">▤ <span>Browse course files</span> <b>→</b></button><button type="button" class="workspace-detail-action" onclick="showMembers()">♙ <span>View classmates</span> <b>→</b></button>':isClique?`<button type="button" class="workspace-detail-action" onclick="showMembers()">♙ <span>View members</span> <b>→</b></button><button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.openCliquePins()">⌖ <span>Pinned messages</span> <b>→</b></button><button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.shareCliqueInvite()">↗ <span>Copy invite link</span> <b>→</b></button>${isCliqueAdmin?'<button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.openCliqueRequests()">✓ <span>Review join requests</span> <b>→</b></button>':''}`:'<button type="button" class="workspace-detail-action" onclick="startCall(\'voice\')">⌕ <span>Start voice call</span> <b>→</b></button><button type="button" class="workspace-detail-action" onclick="startCall(\'video\')">▣ <span>Start video call</span> <b>→</b></button>';
+  pane.innerHTML=`<div class="workspace-details-card"><div class="workspace-detail-emblem">${isCourse?'▤':isClique?esc(item.emoji||'◎'):'◉'}</div><div class="workspace-detail-kicker">${title}</div><h2>${esc(isCourse||isClique?item.name:other?.name||'Conversation')}</h2><p class="workspace-detail-copy">${esc(detail)}</p>${description?`<p class="workspace-detail-description">${esc(description)}</p>`:''}<div class="workspace-detail-section"><div class="workspace-detail-heading">${isCourse?'Classmates':isClique?'People':'Participant'} <span>${memberCount}</span></div>${members||person||'<span class="workspace-detail-muted">Member details are not available.</span>'}</div><div class="workspace-detail-section"><div class="workspace-detail-heading">Quick links</div>${actions}</div></div><div class="workspace-details-tip"><strong>Keep it together</strong><span>Share notes, files, and updates in the right space for your class.</span></div>`;
 }
 
 // ── RENDER MESSAGES ───────────────────────────────────────────
@@ -1195,11 +1383,12 @@ function renderMsgs(msgs,item){
 
 function buildMsgRow(gel,msg,g,isMe,isLast,isClique){
   const row=document.createElement('div'); row.className='msg-row';
-  if(!isMe){ const av=document.createElement('div'); av.className='mavatar'+(isLast?'':' ghost'); if(isLast){av.textContent=ini(g.sName||'?');av.style.background=(g.sColor||'#6c63ff')+'22';av.style.color=g.sColor||'#6c63ff';} row.appendChild(av); }
+  if(!isMe){ const av=document.createElement('div'); av.className='mavatar'+(isLast?'':' ghost'); if(isLast){av.textContent=ini(g.sName||'?');av.style.background=(g.sColor||'#087e7b')+'22';av.style.color=g.sColor||'#087e7b';} row.appendChild(av); }
   const bubble=document.createElement('div'); bubble.className='bubble'+(msg.type==='ai'?' ai-bubble':''); bubble.dataset.msgid=msg._id;
   const reactions=EMOJIS.slice(0,6).map(e=>`<button class="react-btn" onclick="doReact('${msg._id}','${e}');closeMessageMenus()">${e}</button>`).join('');
   const downloadAction=(msg.type==='file'||msg.type==='image'||msg.type==='voice')&&msg.fileUrl?`<button class="message-menu-download" onclick="downloadMessageFile('${msg.fileUrl}','${msg.fileName||'download'}')">Download</button>`:'';
   const deleteAction=isMe?`<button class="message-menu-delete" onclick="deleteMessage('${msg._id}')">Delete message</button>`:'';
+  const pinAction=isClique&&window.KlasoraRefresh?.isCliqueAdmin()?`<button class="message-menu-download" onclick="window.KlasoraRefresh.pinMessage('${msg._id}');closeMessageMenus()">Pin for clique</button>`:'';
   const sLine=(!isMe&&isClique&&isLast)?`<div class="sender-name" style="color:${g.sColor||'var(--accent2)'}">${esc(g.sName||'')}</div>`:'';
   let content='';
   if(msg.type==='image') content=`<img class="img-msg" src="${msg.fileUrl}" alt="${esc(msg.fileName||'image')}" onclick="window.open('${msg.fileUrl}','_blank')">`;
@@ -1208,7 +1397,7 @@ function buildMsgRow(gel,msg,g,isMe,isLast,isClique){
   else if(msg.type==='ai'&&msg.quiz) content=renderQuizMessage(msg.quizId,msg.quiz);
   else if(msg.type==='ai') content=`<div class="ai-tag">🤖 Klasora AI</div>${esc(msg.text)}`;
   else content=esc(msg.text);
-  bubble.innerHTML=`<div class="bactions"><button class="message-menu-btn" onclick="toggleMessageMenu(event,this)" title="Message options">⋯</button><div class="message-menu"><div class="message-menu-reactions">${reactions}</div>${downloadAction}${deleteAction}</div></div>${sLine}${content}`;
+  bubble.innerHTML=`<div class="bactions"><button class="message-menu-btn" onclick="toggleMessageMenu(event,this)" title="Message options">⋯</button><div class="message-menu"><div class="message-menu-reactions">${reactions}</div>${downloadAction}${pinAction}${deleteAction}</div></div>${sLine}${content}`;
   const tEl=document.createElement('div'); tEl.className='mtime'; tEl.textContent=msg.createdAt?fmtTime(new Date(msg.createdAt)):'';
   if(isMe){ const status=document.createElement('span'); status.className='message-status'; status.dataset.statusFor=msg._id; status.textContent=messageStatus(msg); tEl.appendChild(status); }
   if(isMe){row.appendChild(tEl);row.appendChild(bubble);}else{row.appendChild(bubble);row.appendChild(tEl);}
@@ -1239,11 +1428,14 @@ function updateMessageStatus(msgId,status,deliveredAt,readBy){
 
 // ── SEND ──────────────────────────────────────────────────────
 function sendMsg(){
+  const inp=document.getElementById('msgInp'), text=inp.value.trim();
+  if(!activeRoomId||(!pendingAttachment&&!pendingVoiceBlob&&!text))return;
+  if(!socket?.connected){showToast('⚠️','Live chat unavailable','Reconnect before sending; your message is still here.');return;}
   if(pendingAttachment){ sendAttachment(); return; }
   if(pendingVoiceBlob){ sendVoiceNote(); return; }
-  const inp=document.getElementById('msgInp'), text=inp.value.trim(); if(!text||!activeRoomId||!socket)return;
+  if(!text)return;
   inp.value=''; inp.style.height='auto'; stopTyping();
-  socket.emit('send_message',{roomId:activeRoomId,text,senderName:myUser.name,senderColor:myUser.color||'#6c63ff'});
+  socket.emit('send_message',{roomId:activeRoomId,text,senderName:myUser.name,senderColor:myUser.color||'#087e7b'});
 }
 function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
 function onTyping(){ autoR(document.getElementById('msgInp')); if(!activeRoomId)return; socket?.emit('typing',{roomId:activeRoomId,isTyping:true}); clearTimeout(typTimer); typTimer=setTimeout(stopTyping,2000); }
@@ -1357,7 +1549,7 @@ async function sendVoiceNote(){
   try{
     const res=await fetch(SERVER_URL+'/api/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
     const data=await res.json(); if(!res.ok)throw new Error(data.error||'Upload failed');
-    socket.emit('send_message',{roomId:activeRoomId,text:'',senderName:myUser.name,senderColor:myUser.color||'#6c63ff',type:'voice',fileUrl:data.url,fileName:data.name,fileSize:data.size});
+    socket.emit('send_message',{roomId:activeRoomId,text:'',senderName:myUser.name,senderColor:myUser.color||'#087e7b',type:'voice',fileUrl:data.url,fileName:data.name,fileSize:data.size});
     clearVoiceNote();
   }catch(e){showToast('❌','Voice note failed',e.message);}
   finally{if(button){button.disabled=false;button.textContent='Send';}}
@@ -1371,7 +1563,7 @@ async function sendAttachment(){
     const res=await fetch(SERVER_URL+'/api/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error||'Upload failed');
-    socket.emit('send_message',{roomId:activeRoomId,text:caption,senderName:myUser.name,senderColor:myUser.color||'#6c63ff',type:data.isImage?'image':'file',fileUrl:data.url,fileName:data.name,fileSize:data.size});
+    socket.emit('send_message',{roomId:activeRoomId,text:caption,senderName:myUser.name,senderColor:myUser.color||'#087e7b',type:data.isImage?'image':'file',fileUrl:data.url,fileName:data.name,fileSize:data.size});
     document.getElementById('msgInp').value=''; document.getElementById('msgInp').style.height='auto'; clearAttachment();
   }catch(e){showToast('❌','Upload failed',e.message);}
   finally{if(sendButton){sendButton.disabled=false;sendButton.textContent='Send';}}
@@ -1400,7 +1592,7 @@ async function askAI(){
     const aiMsg={_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Klasora AI',senderColor:var_accent,text:data.answer,type:'ai',createdAt:new Date().toISOString(),reactions:{}};
     appendMessage(aiMsg);
     // Also send to room so others see it
-    if(activeRoomId&&socket) socket.emit('send_message',{roomId:activeRoomId,text:data.answer,senderName:'Klasora AI',senderColor:'#6c63ff',type:'ai'});
+    if(activeRoomId&&socket) socket.emit('send_message',{roomId:activeRoomId,text:data.answer,senderName:'Klasora AI',senderColor:'#087e7b',type:'ai'});
   }catch(e){ showToast('🤖','AI error',e.message); }
   finally{ btn.disabled=false; btn.textContent='Ask →'; }
 }
@@ -1440,7 +1632,7 @@ function answerQuiz(quizId,questionIndex,optionIndex,button){
     const header=document.querySelector(`[data-quiz="${quizId}"]`); const score=document.createElement('div'); score.className='quiz-feedback'; score.textContent=`Score: ${quiz.score}/${quiz.items.length}`; header.appendChild(score);
   }
 }
-const var_accent='#6c63ff';
+const var_accent='#087e7b';
 
 // ── HOMEWORK ──────────────────────────────────────────────────
 async function loadHomework(){
@@ -1458,7 +1650,7 @@ async function loadHomework(){
 async function addHomework(){
   const title=document.getElementById('hwTitle').value.trim(); const err=document.getElementById('hwErr'); err.style.display='none';
   if(!title){err.textContent='Title required';err.style.display='block';return;}
-  try{ await api('/api/homework','POST',{title,subject:document.getElementById('hwSubject').value.trim(),courseId:document.getElementById('hwCourse').value||null,dueDate:document.getElementById('hwDue').value||null,priority:document.getElementById('hwPriority').value,notes:document.getElementById('hwNotes').value.trim()}); closeModal('hwModal'); ['hwTitle','hwSubject','hwDue','hwNotes'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hwCourse').value=''; if(sideTab==='homework')loadHomework(); }
+  try{ await api('/api/homework','POST',{title,subject:document.getElementById('hwSubject').value.trim(),courseId:document.getElementById('hwCourse').value||null,dueDate:document.getElementById('hwDue').value||null,priority:document.getElementById('hwPriority').value,notes:document.getElementById('hwNotes').value.trim()}); closeModal('hwModal'); ['hwTitle','hwSubject','hwDue','hwNotes'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hwCourse').value=''; if(sideTab==='homework')loadHomework(); window.KlasoraBridge?.refreshAssignments(); }
   catch(e){err.textContent=e.message;err.style.display='block';}
 }
 async function toggleHW(id,done){ await api(`/api/homework/${id}`,'PATCH',{done}); if(sideTab==='homework')loadHomework(); }
@@ -1541,26 +1733,56 @@ function fmtPom(s){ return `${String(Math.floor(s/60)).padStart(2,'0')}:${String
 
 // ── PUSH NOTIFICATIONS ────────────────────────────────────────
 async function setupPushNotifications(){
+  if(localStorage.getItem('meno_notifications')==='off') return;
   try{
     const {publicKey}=await api('/api/push/vapid-key');
     if(!publicKey||!('serviceWorker' in navigator)) return;
     const reg=await navigator.serviceWorker.register('/sw.js');
-    const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(publicKey)});
+    const sub=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(publicKey)});
     await api('/api/push/subscribe','POST',{subscription:sub});
   }catch{}
+}
+async function updateNotificationPreference(enabled){
+  if(!enabled){
+    await api('/api/push/unsubscribe','POST');
+    const reg=await navigator.serviceWorker?.getRegistration();
+    const subscription=await reg?.pushManager?.getSubscription();
+    if(subscription) await subscription.unsubscribe();
+    localStorage.setItem('meno_notifications','off');
+    showToast('🔕','Notifications paused','You can turn them back on anytime');
+    return;
+  }
+  if(!('serviceWorker' in navigator)||!('Notification' in window)) throw new Error('Push notifications are not supported in this browser.');
+  const permission=Notification.permission==='default'?await Notification.requestPermission():Notification.permission;
+  if(permission!=='granted') throw new Error('Allow notifications in your browser settings to turn message alerts on.');
+  const {publicKey}=await api('/api/push/vapid-key');
+  if(!publicKey) throw new Error('Push notifications are not configured on this server.');
+  const registration=await navigator.serviceWorker.register('/sw.js');
+  const subscription=await registration.pushManager.getSubscription()||await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(publicKey)});
+  await api('/api/push/subscribe','POST',{subscription});
+  localStorage.setItem('meno_notifications','on');
+  showToast('🔔','Notifications enabled','You’ll receive chat and missed-call alerts');
 }
 function urlBase64ToUint8Array(b64){const p='='.repeat((4-b64.length%4)%4);const b=(b64+p).replace(/-/g,'+').replace(/_/g,'/');const d=atob(b);const out=new Uint8Array(d.length);for(let i=0;i<d.length;i++)out[i]=d.charCodeAt(i);return out;}
 
 // ── TOAST ─────────────────────────────────────────────────────
 let toastTimer=null;
 function showToast(icon,title,msg){ const t=document.getElementById('toast'); document.getElementById('toastIcon').textContent=icon; document.getElementById('toastTitle').textContent=title; document.getElementById('toastMsg').textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),3500); }
+function notifyBrowserAlert(title,body,url){
+  if(!document.hidden||!window.KlasoraBridge?.notificationsEnabled||!('Notification'in window)||Notification.permission!=='granted')return;
+  const notification=new Notification(title,{body,icon:'/klasora-logo.png',data:{url}});
+  notification.onclick=()=>{window.focus();window.location.assign(url);};
+}
 
 // ── VOICE / VIDEO CALLS ───────────────────────────────────────
 const ICE_SERVERS={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
 
 async function startCall(type){
   if(!callPeer){showToast('❌','No peer','Open a DM first');return;}
-  callType=type;
+  if(!socket?.connected){showToast('⚠️','Live chat unavailable','Reconnect before starting a call.');return;}
+  callType=type; callDirection='outgoing'; callRoomId=activeRoomId;
+  muted=false; speakerMuted=false; callConnectedAt=null;
+  callLogId=window.KlasoraRefresh?.recordCall({userId:callPeer,name:callPeerName||'Klasora member',mode:type,direction:'outgoing',status:'calling'})||null;
   try{
     localStream=await navigator.mediaDevices.getUserMedia(type==='video'?{video:true,audio:true}:{audio:true});
     showCallOverlay(callPeerName,callPeerColor,'Calling…',type==='video');
@@ -1568,13 +1790,22 @@ async function startCall(type){
     pc=new RTCPeerConnection(ICE_SERVERS);
     localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
     pc.ontrack=e=>{document.getElementById('remoteVideo').srcObject=e.streams[0];};
-    pc.onicecandidate=e=>{if(e.candidate)socket.emit('call_ice',{to:callPeer,candidate:e.candidate});};
+    pc.onicecandidate=e=>{if(e.candidate)socket.emit('call_ice',{to:callPeer,roomId:callRoomId,candidate:e.candidate});};
     const offer=await pc.createOffer(); await pc.setLocalDescription(offer);
-    socket.emit('call_offer',{to:callPeer,offer,type,callerName:myUser.name,callerColor:myUser.color||'#6c63ff'});
-  }catch(e){endCall();showToast('❌','Call failed',e.message);}
+    socket.emit('call_offer',{to:callPeer,roomId:callRoomId,offer,type,callerName:myUser.name,callerColor:myUser.color||'#087e7b'});
+    clearTimeout(callRingTimer);
+    callRingTimer=setTimeout(()=>{
+      if(callDirection==='outgoing'&&!callConnectedAt){
+        endCall(true,'missed');
+        showToast('☎','No answer','Your call was marked as missed.');
+      }
+    },45000);
+  }catch(e){endCall(false,'failed');showToast('❌','Call failed',e.message);}
 }
 async function handleIncomingCall(data){
-  callType=data.type; callPeer=data.from; callPeerName=data.callerName||'Someone'; callPeerColor=data.callerColor||'#6c63ff';
+  callType=data.type; callDirection='incoming'; callPeer=data.from; callRoomId=data.roomId; callPeerName=data.callerName||'Someone'; callPeerColor=data.callerColor||'#087e7b';
+  callConnectedAt=null;
+  callLogId=window.KlasoraRefresh?.recordCall({userId:callPeer,name:callPeerName,mode:callType,direction:'incoming',status:'missed'})||null;
   const inc=document.getElementById('incomingCall'); inc.classList.add('show');
   document.getElementById('incName').textContent=callPeerName;
   document.getElementById('incType').textContent=data.type==='video'?'📹 Video call':'📞 Voice call';
@@ -1586,34 +1817,60 @@ async function acceptCall(){
   const offer=window._pendingOffer; if(!offer)return;
   try{
     localStream=await navigator.mediaDevices.getUserMedia(callType==='video'?{video:true,audio:true}:{audio:true});
-    showCallOverlay(callPeerName,callPeerColor,'Connected',callType==='video');
+    showCallOverlay(callPeerName,callPeerColor,'Connecting…',callType==='video');
     if(callType==='video'){document.getElementById('localVideo').srcObject=localStream;}
     pc=new RTCPeerConnection(ICE_SERVERS);
     localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
     pc.ontrack=e=>{document.getElementById('remoteVideo').srcObject=e.streams[0];};
-    pc.onicecandidate=e=>{if(e.candidate)socket.emit('call_ice',{to:callPeer,candidate:e.candidate});};
+    pc.onicecandidate=e=>{if(e.candidate)socket.emit('call_ice',{to:callPeer,roomId:callRoomId,candidate:e.candidate});};
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
     const answer=await pc.createAnswer(); await pc.setLocalDescription(answer);
-    socket.emit('call_answer',{to:callPeer,answer});
-    document.getElementById('callStatus').textContent='Connected';
-  }catch(e){endCall();showToast('❌','Call failed',e.message);}
+    socket.emit('call_answer',{to:callPeer,roomId:callRoomId,answer});
+    markCallConnected();
+  }catch(e){endCall(false,'failed');showToast('❌','Call failed',e.message);}
 }
-function rejectCall(){ document.getElementById('incomingCall').classList.remove('show'); socket?.emit('call_reject',{to:callPeer}); }
+function rejectCall(){ document.getElementById('incomingCall').classList.remove('show'); window.KlasoraRefresh?.updateCall(callLogId,{status:'declined'}); socket?.emit('call_reject',{to:callPeer,roomId:callRoomId}); callLogId=null; callPeer=null; callRoomId=null; callDirection=null; }
 function showCallOverlay(name,color,status,video){
   const ov=document.getElementById('callOverlay'); ov.classList.add('show');
   document.getElementById('callName').textContent=name;
   document.getElementById('callStatus').textContent=status;
   const av=document.getElementById('callAvatar'); av.textContent=ini(name); av.style.background=color+'22'; av.style.color=color;
   document.getElementById('callVideos').style.display=video?'flex':'none';
+  document.getElementById('cameraBtn').hidden=!video;
+  document.getElementById('callDuration').textContent='00:00';
+  document.getElementById('muteBtn').setAttribute('aria-pressed','false');
+  document.getElementById('speakerBtn').setAttribute('aria-pressed','true');
+  document.getElementById('remoteVideo').muted=false;
 }
-function endCall(){
+function markCallConnected(){
+  if(!callConnectedAt) {
+    callConnectedAt=Date.now();
+    clearTimeout(callRingTimer); callRingTimer=null;
+    window.KlasoraRefresh?.updateCall(callLogId,{status:'connected'});
+    document.getElementById('callStatus').textContent='Connected';
+    clearInterval(callDurationTimer);
+    callDurationTimer=setInterval(()=>{
+      const seconds=Math.floor((Date.now()-callConnectedAt)/1000);
+      document.getElementById('callDuration').textContent=`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+    },1000);
+  }
+}
+function endCall(sendSignal=true,status){
+  const duration=callConnectedAt?Math.floor((Date.now()-callConnectedAt)/1000):0;
+  const peer=callPeer, roomId=callRoomId;
+  if(callLogId) window.KlasoraRefresh?.updateCall(callLogId,{status:status||(callConnectedAt?'ended':'cancelled'),duration});
+  callLogId=null; callConnectedAt=null; clearInterval(callDurationTimer); callDurationTimer=null; clearTimeout(callRingTimer); callRingTimer=null;
   if(pc){pc.close();pc=null;}
   if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
   document.getElementById('callOverlay').classList.remove('show');
   document.getElementById('incomingCall').classList.remove('show');
-  if(callPeer) socket?.emit('call_end',{to:callPeer});
+  document.getElementById('remoteVideo').srcObject=null; document.getElementById('localVideo').srcObject=null;
+  if(sendSignal&&peer&&roomId) socket?.emit('call_end',{to:peer,roomId});
+  callPeer=null; callRoomId=null; callDirection=null;
 }
-function toggleMute(){ muted=!muted; localStream?.getAudioTracks().forEach(t=>t.enabled=!muted); document.getElementById('muteBtn').textContent=muted?'🔇':'🎤'; }
+function toggleMute(){ muted=!muted; localStream?.getAudioTracks().forEach(t=>t.enabled=!muted); const button=document.getElementById('muteBtn'); button.textContent=muted?'🔇':'🎙'; button.setAttribute('aria-pressed',String(muted)); button.title=muted?'Unmute microphone':'Mute microphone'; }
+function toggleSpeaker(){ speakerMuted=!speakerMuted; const remote=document.getElementById('remoteVideo'); remote.muted=speakerMuted; const button=document.getElementById('speakerBtn'); button.setAttribute('aria-pressed',String(!speakerMuted)); button.title=speakerMuted?'Turn speaker on':'Turn speaker off'; }
+function toggleCamera(){ const track=localStream?.getVideoTracks()[0]; if(!track)return; track.enabled=!track.enabled; const button=document.getElementById('cameraBtn'); button.setAttribute('aria-pressed',String(!track.enabled)); button.title=track.enabled?'Turn camera off':'Turn camera on'; }
 
 // ── DM / CLIQUE CREATION ──────────────────────────────────────
 async function startDM(){
@@ -1651,7 +1908,7 @@ async function createCourse(){
 function buildCliqueEmojiGrid(){ const g=document.getElementById('cEmojiGrid'); g.innerHTML=''; CLIQUE_EMOJIS.forEach((e,i)=>{const el=document.createElement('div');el.className='eg-opt'+(i===0?' selected':'');el.textContent=e;el.onclick=()=>{selCliqueEmoji=e;document.querySelectorAll('.eg-opt').forEach(x=>x.classList.remove('selected'));el.classList.add('selected');};g.appendChild(el);}); }
 
 // ── MEMBERS ───────────────────────────────────────────────────
-async function showMembers(){ const item=allItems.find(x=>x._id===activeId);if(!item)return; document.getElementById('membersCliqueName').textContent=item.name; const ml=document.getElementById('membersList'); ml.innerHTML=`<div class="loading-row"><div class="spinner"></div></div>`; openModal('membersModal'); const fi=activeType==='course'?await api(`/api/courses/${item._id}`):(await api('/api/cliques')).find(x=>x._id===item._id);if(!fi)return;ml.innerHTML='';(fi.members||[]).forEach(p=>{const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:0.7rem;padding:0.5rem 0;border-bottom:1px solid var(--border);';row.innerHTML=`<div class="avatar" style="background:${p.color||'#6c63ff'}22;color:${p.color||'#6c63ff'};width:32px;height:32px;font-size:0.72rem;">${ini(p.name)}</div><div><div style="font-size:0.81rem;font-weight:600;">${esc(p.name)}</div><div style="font-size:0.65rem;color:var(--text3);">${p.email}</div></div>`;ml.appendChild(row);}); }
+async function showMembers(){ const item=allItems.find(x=>x._id===activeId);if(!item)return; document.getElementById('membersCliqueName').textContent=item.name; const ml=document.getElementById('membersList'); ml.innerHTML=`<div class="loading-row"><div class="spinner"></div></div>`; const canInvite=activeType==='course'||String(item.createdBy||'')===String(myUser._id||''); document.getElementById('addMemberEmail').hidden=!canInvite; document.querySelector('#membersModal .modal-acts .mbtn.pri').hidden=!canInvite; openModal('membersModal'); try{const members=activeType==='course'?(await api(`/api/courses/${item._id}`)).members||[]:await api(`/api/cliques/${item._id}/members`);ml.innerHTML='';members.forEach(p=>{const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:0.7rem;padding:0.5rem 0;border-bottom:1px solid var(--border);';row.innerHTML=`<div class="avatar" style="background:${p.color||'#087e7b'}22;color:${p.color||'#087e7b'};width:32px;height:32px;font-size:0.72rem;">${ini(p.name)}</div><div><div style="font-size:0.81rem;font-weight:600;">${esc(p.name)}</div></div>`;ml.appendChild(row);});}catch(e){ml.textContent=e.message;} }
 async function addMemberToClique(){ const email=document.getElementById('addMemberEmail').value.trim().toLowerCase(); const err=document.getElementById('addMemberErr'); err.style.display='none'; try{const u=await api(`/api/users/search?email=${encodeURIComponent(email)}`);await api(activeType==='course'?`/api/courses/${activeId}/invite`:`/api/cliques/${activeId}/members`,'POST',activeType==='course'?{email}:{userId:u._id});document.getElementById('addMemberEmail').value='';showMembers();loadList();}catch(e){err.textContent=e.message;err.style.display='block';} }
 async function showCourseFiles(){
   if(activeType!=='course')return;
@@ -1698,7 +1955,7 @@ async function uploadCourseFile(input){
   const folderId=document.getElementById('courseFileFolder').value;
   if(folderId&&folderId!=='none')form.append('folderId',folderId);
   try{
-    const res=await fetch(`/api/courses/${activeId}/files`,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
+    const res=await fetch(apiUrl(`/api/courses/${activeId}/files`),{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
     const data=await res.json(); if(!res.ok)throw new Error(data.error||'Upload failed');
     input.value=''; await loadCourseFiles();
   }catch(e){err.textContent=e.message;err.style.display='block';}

@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express    = require('express');
+require('express-async-errors');
 const http       = require('http');
 const crypto     = require('crypto');
 const { Server } = require('socket.io');
@@ -10,6 +11,7 @@ const cors       = require('cors');
 const path       = require('path');
 const multer     = require('multer');
 const webpush    = require('web-push');
+const { getAuthRedirectUrl } = require('./auth-redirect');
 
 const app    = express();
 const server = http.createServer(app);
@@ -25,6 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
 const courseUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 const CHAT_FILE_BUCKET = 'chat-files';
+const PROFILE_IMAGE_BUCKET = 'profile-images';
 
 // ── WEB PUSH ──────────────────────────────────────────────────
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -44,6 +47,25 @@ const supabase = supabaseUrl && supabaseKey
 const supabaseAuth = supabaseUrl && process.env.SUPABASE_ANON_KEY
   ? createClient(supabaseUrl, process.env.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
   : null;
+
+const getPublicBackendOrigin = value => {
+  if (!value) return '';
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('PUBLIC_BACKEND_URL must be an absolute HTTP(S) URL');
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('PUBLIC_BACKEND_URL must be an origin without credentials, path, query, or fragment');
+  }
+  if ((process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') &&
+      (url.protocol !== 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) {
+    throw new Error('PUBLIC_BACKEND_URL must use a public HTTPS origin in production');
+  }
+  return url.origin;
+};
+const publicBackendUrl = getPublicBackendOrigin(process.env.PUBLIC_BACKEND_URL);
 
 if (!supabase) {
   console.warn('⚠️ Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env');
@@ -253,6 +275,8 @@ const Message = makeTableAdapter('messages', { defaultOrder: 'created_at', defau
 const StatusUpdate = makeTableAdapter('status_updates', { defaultOrder: 'created_at', defaultAscending: false });
 const DM = makeTableAdapter('dms', { defaultOrder: 'last_at', defaultAscending: false });
 const Clique = makeTableAdapter('cliques', { defaultOrder: 'last_at', defaultAscending: false });
+const CliqueJoinRequest = makeTableAdapter('clique_join_requests', { defaultOrder: 'created_at', defaultAscending: false });
+const CliquePin = makeTableAdapter('clique_pins', { defaultOrder: 'created_at', defaultAscending: false });
 const Homework = makeTableAdapter('homework', { defaultOrder: 'due_date', defaultAscending: true });
 const Pomodoro = makeTableAdapter('pomodoros');
 const Course = makeTableAdapter('courses', { defaultOrder: 'updated_at', defaultAscending: false });
@@ -261,10 +285,33 @@ const CourseFile = makeTableAdapter('course_files', { defaultOrder: 'created_at'
 const CourseFileFolder = makeTableAdapter('course_file_folders', { defaultOrder: 'name', defaultAscending: true });
 
 const courseHasMember = (course, userId) => (course?.members || [])
-  .some(member => (typeof member === 'string' ? member : (member.id || member._id)) === userId);
+  .some(member => String(typeof member === 'string' ? member : (member.id || member._id)) === String(userId));
+const isCliqueAdmin = (clique, userId) => String(clique?.createdBy || '') === String(userId);
+const isUuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+const publicCliqueSummary = clique => ({
+  _id: clique._id,
+  name: clique.name,
+  description: clique.description || '',
+  emoji: clique.emoji || '◉',
+  color: clique.color || '#087e7b',
+  visibility: clique.visibility === 'public' ? 'public' : 'private',
+  memberCount: Array.isArray(clique.members) ? clique.members.length : 0
+});
 const isCourseMember = async (courseId, userId) => {
   const course = await Course.findById(courseId);
   return courseHasMember(course, userId);
+};
+const findChatRoom = async roomId => {
+  if (typeof roomId !== 'string' || !roomId || roomId.length > 100) return null;
+  const [dm, course, clique] = await Promise.all([
+    DM.findOne({ roomId }),
+    Course.findOne({ roomId }),
+    isUuid(roomId) ? Clique.findById(roomId) : Promise.resolve(null)
+  ]);
+  if (dm) return { type: 'dm', room: dm };
+  if (course) return { type: 'course', room: course };
+  if (clique) return { type: 'clique', room: clique };
+  return null;
 };
 
 // ── JWT ───────────────────────────────────────────────────────
@@ -280,6 +327,22 @@ const auth = (req, res, next) => {
   req.userId = decoded.id; next();
 };
 const safeUser = u => u ? ({ _id: u._id, name: u.name, email: u.email, color: u.color, bio: u.bio, online: u.online, theme: u.theme }) : null;
+const profileUser = async u => {
+  let profileImage = null;
+  if (u.profileImagePath) {
+    const { data, error } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).createSignedUrl(u.profileImagePath, 60 * 60);
+    if (error) throw error;
+    profileImage = data.signedUrl;
+  }
+  return {
+    ...safeUser(u),
+    courseOfStudy: u.courseOfStudy || '',
+    level: u.level || '',
+    matriculationNumber: u.matriculationNumber || '',
+    institution: u.institution || '',
+    profileImage
+  };
+};
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const validateCredentials = ({ name, email, password }, includeName = false) => {
   if (includeName && (!name || name.trim().length < 2 || name.trim().length > 80)) {
@@ -295,6 +358,11 @@ const validateCredentials = ({ name, email, password }, includeName = false) => 
 };
 
 // ── AUTH ROUTES ───────────────────────────────────────────────
+app.get('/api/config', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ backendUrl: publicBackendUrl });
+});
+
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password, color } = req.body;
@@ -307,8 +375,8 @@ app.post('/api/register', async (req, res) => {
       email: normalizedEmail,
       password,
       options: {
-        data: { name: name.trim(), color: color || '#6c63ff' },
-        emailRedirectTo: process.env.APP_URL || 'http://localhost:3000'
+        data: { name: name.trim(), color: color || '#087e7b' },
+        emailRedirectTo: getAuthRedirectUrl(req)
       }
     });
     if (error) throw error;
@@ -317,7 +385,7 @@ app.post('/api/register', async (req, res) => {
       id: data.user.id,
       name: name.trim(),
       email: normalizedEmail,
-      color: color || '#6c63ff'
+      color: color || '#087e7b'
     });
     if (!data.session) {
       return res.status(201).json({ needsVerification: true, message: 'Check your email to verify your Klasora account before signing in.' });
@@ -341,11 +409,27 @@ app.post('/api/login', async (req, res) => {
     });
     let user = data.user ? await User.findById(data.user.id) : null;
     if (!user && supabase) {
-      const legacyUser = await User.findOne({ email: email.trim().toLowerCase() });
-      if (legacyUser?.password && await bcrypt.compare(password, legacyUser.password)) user = legacyUser;
+      const emailUser = await User.findOne({ email: email.trim().toLowerCase() });
+      if (data.user && emailUser) {
+        user = emailUser;
+      } else if (data.user?.email) {
+        const metadata = data.user.user_metadata || {};
+        const displayName = metadata.name || metadata.full_name || data.user.email.split('@')[0];
+        user = await User.create({
+          id: data.user.id,
+          name: displayName.trim().length >= 2 ? displayName.trim().slice(0, 80) : 'Student',
+          email: data.user.email.toLowerCase(),
+          color: metadata.color || '#087e7b'
+        });
+      } else if (emailUser?.password && await bcrypt.compare(password, emailUser.password)) {
+        user = emailUser;
+      }
     }
     if (!user) {
-      return res.status(400).json({ error: data.user ? 'Your profile is incomplete. Contact support.' : (error?.message || 'Incorrect email or password') });
+      const authMessage = error?.message?.trim().toLowerCase() === 'invalid login credentials'
+        ? 'Wrong Username or Password'
+        : (error?.message || 'Incorrect email or password');
+      return res.status(400).json({ error: authMessage });
     }
     res.json({ token: signToken(user), user: safeUser(user) });
   } catch (e) {
@@ -360,14 +444,14 @@ app.get('/api/auth/google', async (req, res) => {
     const { data, error } = await supabaseAuth.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: process.env.APP_URL || 'http://localhost:3000'
+        redirectTo: getAuthRedirectUrl(req)
       }
     });
     if (error || !data?.url) throw error || new Error('Google sign-in is not configured in Supabase');
     res.json({ url: data.url });
   } catch (e) {
     console.error('Google sign-in request failed:', e);
-    res.status(500).json({ error: 'Google sign-in is not configured yet. Enable it in Supabase Authentication → Providers → Google.' });
+    res.status(500).json({ error: e.message || 'Google sign-in could not be started. Please try again.' });
   }
 });
 
@@ -389,7 +473,7 @@ app.post('/api/auth/sync', async (req, res) => {
         id: authUser.id,
         name: metadata.full_name || metadata.name || authUser.email.split('@')[0],
         email: authUser.email.toLowerCase(),
-        color: metadata.color || '#6c63ff'
+        color: metadata.color || '#087e7b'
       });
     }
     res.json({ token: signToken(user), user: safeUser(user) });
@@ -405,7 +489,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     if (!email || !emailPattern.test(email)) return res.status(400).json({ error: 'Enter a valid email address' });
     if (!supabaseAuth) throw new Error('Supabase Auth is not configured');
     const { error } = await supabaseAuth.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.APP_URL || 'http://localhost:3000'}?reset=1`
+      redirectTo: getAuthRedirectUrl(req, '/?reset=1')
     });
     if (error) throw error;
     res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
@@ -413,7 +497,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     console.error('Password reset request failed:', e);
     const message = String(e?.message || '');
     if (/redirect|url|email/i.test(message)) {
-      return res.status(400).json({ error: 'Supabase rejected the reset link URL. Add http://localhost:3000 under Authentication → URL Configuration → Redirect URLs, then restart the server.' });
+      return res.status(400).json({ error: 'Supabase rejected the reset link URL. Check Authentication → URL Configuration and allow the deployed app origin in Redirect URLs.' });
     }
     if (/rate limit|smtp|email/i.test(message)) {
       return res.status(502).json({ error: 'Supabase could not send the reset email. Check the Auth email provider and try again later.' });
@@ -453,13 +537,79 @@ app.patch('/api/me/bio', auth, async (req, res) => {
   res.json(safeUser(u));
 });
 
+app.get('/api/me/profile', auth, async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Academic profile storage is not configured' });
+  try {
+    const u = await User.findById(req.userId);
+    if (!u) return res.status(404).json({ error: 'Profile not found' });
+    res.set('Cache-Control', 'no-store');
+    res.json(await profileUser(u));
+  } catch (e) {
+    console.error('Profile retrieval failed:', e);
+    res.status(500).json({ error: 'Unable to load your academic profile' });
+  }
+});
+
 app.patch('/api/me/profile', auth, async (req, res) => {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
   const bio = typeof req.body.bio === 'string' ? req.body.bio.trim() : '';
   if (name.length < 2 || name.length > 80) return res.status(400).json({ error: 'Name must be between 2 and 80 characters' });
   if (bio.length > 240) return res.status(400).json({ error: 'Bio must be 240 characters or less' });
-  const u = await User.findByIdAndUpdate(req.userId, { name, bio }, { new: true });
-  res.json(safeUser(u));
+
+  const fields = {
+    courseOfStudy: 120,
+    level: 60,
+    matriculationNumber: 80,
+    institution: 180
+  };
+  const update = { name, bio };
+  for (const [field, maxLength] of Object.entries(fields)) {
+    if (req.body[field] === undefined) continue;
+    if (typeof req.body[field] !== 'string' || req.body[field].trim().length > maxLength) {
+      return res.status(400).json({ error: `${field} must be ${maxLength} characters or less` });
+    }
+    update[field] = req.body[field].trim();
+  }
+
+  let profileImage;
+  if (req.body.profileImage !== undefined) {
+    const match = typeof req.body.profileImage === 'string' && req.body.profileImage.match(/^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/);
+    if (!match) return res.status(400).json({ error: 'Profile picture must be a compressed WebP image' });
+    profileImage = Buffer.from(match[1], 'base64');
+    if (!profileImage.length || profileImage.length > 400 * 1024 || profileImage.toString('base64') !== match[1]) {
+      return res.status(400).json({ error: 'Profile picture must be 400 KB or smaller' });
+    }
+  }
+
+  if (!supabase) return res.status(503).json({ error: 'Academic profile storage is not configured' });
+  if (profileImage) {
+    const profileImagePath = `${req.userId}/profile.webp`;
+    let error;
+    try {
+      ({ error } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(profileImagePath, profileImage, {
+        contentType: 'image/webp',
+        upsert: true
+      }));
+    } catch (e) {
+      console.error('Profile picture upload failed:', e);
+      return res.status(500).json({ error: 'Unable to save your profile picture' });
+    }
+    if (error) {
+      console.error('Profile picture upload failed:', error);
+      return res.status(500).json({ error: 'Unable to save your profile picture' });
+    }
+    update.profileImagePath = profileImagePath;
+  }
+
+  try {
+    const u = await User.findByIdAndUpdate(req.userId, update, { new: true });
+    if (!u) return res.status(404).json({ error: 'Profile not found' });
+    res.set('Cache-Control', 'no-store');
+    res.json(await profileUser(u));
+  } catch (e) {
+    console.error('Profile update failed:', e);
+    res.status(500).json({ error: 'Unable to save your academic profile' });
+  }
 });
 
 app.get('/api/status', auth, async (req, res) => {
@@ -484,8 +634,28 @@ app.get('/api/push/vapid-key', (req, res) => {
 });
 
 app.post('/api/push/subscribe', auth, async (req, res) => {
-  await User.findByIdAndUpdate(req.userId, { pushSub: req.body.subscription });
-  res.json({ ok: true });
+  if (!supabase) return res.status(503).json({ error: 'Push notifications are not configured' });
+  if (!req.body.subscription || typeof req.body.subscription !== 'object') return res.status(400).json({ error: 'A push subscription is required' });
+  try {
+    const user = await User.findByIdAndUpdate(req.userId, { pushSub: req.body.subscription });
+    if (!user) return res.status(404).json({ error: 'Account not found' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Push subscription save failed:', e);
+    res.status(500).json({ error: 'Unable to enable push notifications' });
+  }
+});
+
+app.post('/api/push/unsubscribe', auth, async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Push notifications are not configured' });
+  try {
+    const user = await User.findByIdAndUpdate(req.userId, { pushSub: null });
+    if (!user) return res.status(404).json({ error: 'Account not found' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Push unsubscribe failed:', e);
+    res.status(500).json({ error: 'Unable to pause push notifications' });
+  }
 });
 
 async function sendPush(userId, title, body, data = {}) {
@@ -515,26 +685,202 @@ app.post('/api/dms', auth, async (req, res) => {
 
 // ── CLIQUE ROUTES ─────────────────────────────────────────────
 app.get('/api/cliques', auth, async (req, res) => {
-  const cliques = await Clique.find({ members: req.userId });
-  res.json(cliques.sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt)));
+  try {
+    const cliques = await Clique.find({ members: req.userId });
+    res.json(cliques.sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt)));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/cliques/discover', auth, async (req, res) => {
+  try {
+    const search = String(req.query.q || '').trim().toLowerCase();
+    const [cliques, myRequests] = await Promise.all([
+      Clique.find({ visibility: 'public' }),
+      CliqueJoinRequest.find({ userId: req.userId })
+    ]);
+    const requestStatus = new Map(myRequests.map(request => [String(request.cliqueId), request.status]));
+    res.json(cliques
+      .filter(clique => !courseHasMember(clique, req.userId))
+      .filter(clique => !search || `${clique.name} ${clique.description || ''}`.toLowerCase().includes(search))
+      .slice(0, 50)
+      .map(clique => ({ ...publicCliqueSummary(clique), myRequestStatus: requestStatus.get(String(clique._id)) || null })));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/cliques/join-requests', auth, async (req, res) => {
+  try {
+    const ownedCliques = await Clique.find({ createdBy: req.userId });
+    const cliqueById = new Map(ownedCliques.map(clique => [String(clique._id), clique]));
+    const pending = (await Promise.all(ownedCliques.map(clique => CliqueJoinRequest.find({ cliqueId: clique._id, status: 'pending' })))).flat();
+    const result = await Promise.all(pending.map(async request => {
+      const [user, clique] = await Promise.all([
+        User.findById(request.userId),
+        Promise.resolve(cliqueById.get(String(request.cliqueId)))
+      ]);
+      return {
+        _id: request._id,
+        cliqueId: request.cliqueId,
+        cliqueName: clique.name,
+        createdAt: request.createdAt,
+        user: user ? { _id: user._id, name: user.name, color: user.color } : null
+      };
+    }));
+    res.json(result.filter(request => request.user));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/cliques/:id/invite', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid clique ID' });
+  try {
+    const clique = await Clique.findById(req.params.id);
+    if (!clique) return res.status(404).json({ error: 'Clique not found' });
+    res.json(publicCliqueSummary(clique));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/cliques', auth, async (req, res) => {
   try {
-    const { name, emoji, color, memberIds } = req.body;
-    const members = [...new Set([req.userId.toString(), ...(memberIds || [])])];
-    const clique = await Clique.create({ name, emoji: emoji||'🔗', color: color||'#6c63ff', members, createdBy: req.userId });
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    const description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
+    const visibility = req.body.visibility || 'private';
+    const memberIds = req.body.memberIds === undefined ? [] : req.body.memberIds;
+    if (!name || name.length > 60) return res.status(400).json({ error: 'Clique name is required and must be 60 characters or less' });
+    if (description.length > 300) return res.status(400).json({ error: 'Clique description must be 300 characters or less' });
+    if (!['private', 'public'].includes(visibility)) return res.status(400).json({ error: 'Clique visibility must be private or public' });
+    if (!Array.isArray(memberIds) || memberIds.length > 50 || memberIds.some(id => !isUuid(id))) return res.status(400).json({ error: 'Clique members must be a list of up to 50 valid user IDs' });
+    const uniqueMemberIds = [...new Set(memberIds)];
+    for (const memberId of uniqueMemberIds) {
+      if (!await User.findById(memberId)) return res.status(400).json({ error: 'One or more invited members could not be found' });
+    }
+    const members = [...new Set([req.userId.toString(), ...uniqueMemberIds])];
+    const clique = await Clique.create({
+      name, description, visibility, emoji: req.body.emoji || '🔗',
+      color: req.body.color || '#087e7b', members, createdBy: req.userId
+    });
     clique.members = await hydrateMembers(clique.members || []);
     res.json(clique);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/cliques/:id/members', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid clique ID' });
+  try {
+    const clique = await Clique.findById(req.params.id);
+    if (!clique || !courseHasMember(clique, req.userId)) return res.status(404).json({ error: 'Clique not found' });
+    const members = await hydrateMembers(clique.members || []);
+    res.json(members.map(member => ({ _id: member._id, name: member.name, color: member.color, online: member.online })));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/cliques/:id/join', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid clique ID' });
+  try {
+    const clique = await Clique.findById(req.params.id);
+    if (!clique) return res.status(404).json({ error: 'Clique not found' });
+    if (courseHasMember(clique, req.userId)) return res.json({ status: 'member' });
+    if (clique.visibility === 'public') {
+      const updated = await Clique.findByIdAndUpdate(clique._id, { $addToSet: { members: req.userId } }, { new: true });
+      if (!updated) return res.status(404).json({ error: 'Clique not found' });
+      return res.json({ status: 'joined' });
+    }
+    const existing = await CliqueJoinRequest.findOne({ cliqueId: clique._id, userId: req.userId });
+    if (existing?.status === 'pending') return res.json({ status: 'pending' });
+    await CliqueJoinRequest.findOneAndUpdate(
+      { cliqueId: clique._id, userId: req.userId },
+      { status: 'pending' },
+      { upsert: true, new: true }
+    );
+    res.json({ status: 'pending' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/cliques/:id/join-requests/:userId', auth, async (req, res) => {
+  if (!isUuid(req.params.id) || !isUuid(req.params.userId)) return res.status(400).json({ error: 'Invalid clique or user ID' });
+  const action = req.body.action;
+  if (!['approve', 'decline'].includes(action)) return res.status(400).json({ error: 'Choose approve or decline' });
+  try {
+    const clique = await Clique.findById(req.params.id);
+    if (!clique || !isCliqueAdmin(clique, req.userId)) return res.status(404).json({ error: 'Clique not found' });
+    const request = await CliqueJoinRequest.findOne({ cliqueId: clique._id, userId: req.params.userId, status: 'pending' });
+    if (!request) return res.status(404).json({ error: 'Pending join request not found' });
+    if (action === 'approve') {
+      const updated = await Clique.findByIdAndUpdate(clique._id, { $addToSet: { members: request.userId } }, { new: true });
+      if (!updated) return res.status(404).json({ error: 'Clique not found' });
+    }
+    await CliqueJoinRequest.findByIdAndUpdate(request._id, { status: action === 'approve' ? 'approved' : 'declined' });
+    res.json({ status: action === 'approve' ? 'approved' : 'declined' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/cliques/:id/members', auth, async (req, res) => {
+  if (!isUuid(req.params.id) || !isUuid(req.body.userId)) return res.status(400).json({ error: 'Valid clique and user IDs are required' });
   try {
+    const currentClique = await Clique.findById(req.params.id);
+    if (!currentClique || !isCliqueAdmin(currentClique, req.userId)) return res.status(404).json({ error: 'Clique not found' });
+    if (!await User.findById(req.body.userId)) return res.status(404).json({ error: 'User not found' });
     const clique = await Clique.findByIdAndUpdate(req.params.id, { $addToSet: { members: req.body.userId } }, { new: true });
+    if (!clique) return res.status(404).json({ error: 'Clique not found' });
     clique.members = await hydrateMembers(clique.members || []);
     res.json(clique);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/cliques/:id/pins', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid clique ID' });
+  try {
+    const clique = await Clique.findById(req.params.id);
+    if (!clique || !courseHasMember(clique, req.userId)) return res.status(404).json({ error: 'Clique not found' });
+    const pins = await CliquePin.find({ cliqueId: clique._id });
+    const results = await Promise.all(pins.map(async pin => {
+      const message = await Message.findById(pin.messageId);
+      return message?.roomId === clique._id ? { ...pin, message } : null;
+    }));
+    res.json(results.filter(Boolean));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/cliques/:id/pins/:messageId', auth, async (req, res) => {
+  if (!isUuid(req.params.id) || !isUuid(req.params.messageId)) return res.status(400).json({ error: 'Invalid clique or message ID' });
+  try {
+    const clique = await Clique.findById(req.params.id);
+    if (!clique || !isCliqueAdmin(clique, req.userId)) return res.status(404).json({ error: 'Clique not found' });
+    const message = await Message.findById(req.params.messageId);
+    if (!message || String(message.roomId) !== String(clique._id)) return res.status(404).json({ error: 'Message not found in this clique' });
+    const existing = await CliquePin.findOne({ cliqueId: clique._id, messageId: message._id });
+    if (existing) return res.json(existing);
+    const pin = await CliquePin.create({ cliqueId: clique._id, messageId: message._id, pinnedBy: req.userId });
+    res.status(201).json(pin);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/cliques/:id/pins/:messageId', auth, async (req, res) => {
+  if (!isUuid(req.params.id) || !isUuid(req.params.messageId)) return res.status(400).json({ error: 'Invalid clique or message ID' });
+  try {
+    const clique = await Clique.findById(req.params.id);
+    if (!clique || !isCliqueAdmin(clique, req.userId)) return res.status(404).json({ error: 'Clique not found' });
+    await CliquePin.findOneAndDelete({ cliqueId: clique._id, messageId: req.params.messageId });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ── COURSE SPACE ROUTES ──────────────────────────────────────
@@ -928,6 +1274,7 @@ app.post('/api/pomodoro/complete', auth, async (req, res) => {
 
 // ── SOCKET.IO ─────────────────────────────────────────────────
 const onlineUsers = new Map();
+const pendingCalls = new Map();
 
 io.use((socket, next) => {
   const decoded = verifyToken(socket.handshake.auth.token);
@@ -947,32 +1294,41 @@ io.on('connection', async (socket) => {
   cliques.forEach(c => socket.join(c._id.toString()));
   courses.forEach(c => socket.join(c.roomId));
 
-  socket.on('join_room', roomId => socket.join(roomId));
+  socket.on('join_room', async roomId => {
+    try {
+      const target = await findChatRoom(roomId);
+      if (!target || !courseHasMember(target.room, uid)) return socket.emit('error', 'You are not a member of this conversation');
+      socket.join(roomId);
+    } catch (error) {
+      socket.emit('error', error.message);
+    }
+  });
 
   socket.on('send_message', async (data) => {
     try {
       const { roomId, text, senderName, senderColor, type, fileUrl, fileName, fileSize } = data;
-      const course = await Course.findOne({ roomId });
-      if (course && !courseHasMember(course, uid)) return socket.emit('error', 'You are not a member of this course');
+      const target = await findChatRoom(roomId);
+      if (!target || !courseHasMember(target.room, uid)) return socket.emit('error', 'You are not a member of this conversation');
       const msg = await Message.create({ roomId, senderId: uid, senderName, senderColor, text: text||'', type: type||'text', fileUrl, fileName, fileSize, readBy: [] });
-      await Promise.all([
-        DM.findOneAndUpdate({ roomId }, { lastMsg: text||fileName||'File', lastAt: new Date() }),
-        Clique.findByIdAndUpdate(roomId, { lastMsg: text||fileName||'File', lastAt: new Date() })
-      ]);
+      const lastMessageUpdate = { lastMsg: text||fileName||'File', lastAt: new Date() };
+      if (target.type === 'dm') await DM.findByIdAndUpdate(target.room._id, lastMessageUpdate);
+      else if (target.type === 'clique') await Clique.findByIdAndUpdate(target.room._id, lastMessageUpdate);
       io.to(roomId).emit('new_message', msg);
 
       // Push notification to offline members
-      const [dm, clique, courseRoom] = await Promise.all([DM.findOne({ roomId }), Clique.findById(roomId), Course.findOne({ roomId })]);
-      const members = dm?.members || clique?.members || courseRoom?.members || [];
-      const hasOnlineRecipient = members.some(memberId => memberId.toString() !== uid && onlineUsers.has(memberId.toString()));
+      const members = (target.room.members || []).map(member => typeof member === 'string' ? member : (member._id || member.id));
+      const hasOnlineRecipient = members.some(memberId => String(memberId) !== uid && onlineUsers.has(String(memberId)));
       if (hasOnlineRecipient) {
         const delivered = await Message.findByIdAndUpdate(msg._id, { deliveredAt: new Date() });
         io.to(roomId).emit('message_status', { msgId: msg._id, status: 'delivered', deliveredAt: delivered.deliveredAt });
       }
       for (const memberId of members) {
-        if (memberId.toString() !== uid) {
-          const memberSocket = onlineUsers.get(memberId.toString());
-          if (!memberSocket) await sendPush(memberId, `New message from ${senderName}`, text||'Sent a file', { roomId });
+        if (String(memberId) !== uid) {
+          const memberSocket = onlineUsers.get(String(memberId));
+          if (!memberSocket) {
+            const title = target.type === 'clique' ? `New message in ${target.room.name}` : `New message from ${senderName}`;
+            await sendPush(memberId, title, 'Open Klasora to read your message.', { url: `/?roomId=${encodeURIComponent(roomId)}` });
+          }
         }
       }
     } catch (e) { socket.emit('error', e.message); }
@@ -980,6 +1336,8 @@ io.on('connection', async (socket) => {
 
   socket.on('mark_room_read', async ({ roomId }) => {
     try {
+      const target = await findChatRoom(roomId);
+      if (!target || !courseHasMember(target.room, uid)) return socket.emit('error', 'You are not a member of this conversation');
       const messages = await Message.find({ roomId });
       for (const msg of messages) {
         if (msg.senderId === uid || (msg.readBy || []).includes(uid)) continue;
@@ -992,6 +1350,10 @@ io.on('connection', async (socket) => {
 
   socket.on('react', async ({ msgId, emoji }) => {
     try {
+      const existing = await Message.findById(msgId);
+      if (!existing) return socket.emit('error', 'Message not found');
+      const target = await findChatRoom(existing.roomId);
+      if (!target || !courseHasMember(target.room, uid)) return socket.emit('error', 'You are not a member of this conversation');
       const msg = await Message.findByIdAndUpdate(msgId, { $inc: { [`reactions.${emoji}`]: 1 } }, { new: true });
       if (!msg) return socket.emit('error', 'Message not found');
       io.to(msg.roomId).emit('message_updated', msg);
@@ -1002,6 +1364,8 @@ io.on('connection', async (socket) => {
     try {
       const msg = await Message.findById(msgId);
       if (!msg) return socket.emit('error', 'Message not found');
+      const target = await findChatRoom(msg.roomId);
+      if (!target || !courseHasMember(target.room, uid)) return socket.emit('error', 'You are not a member of this conversation');
       if (msg.senderId !== uid) return socket.emit('error', 'You can only delete your own messages');
       await Message.findOneAndDelete({ _id: msgId, senderId: uid });
       io.to(msg.roomId).emit('message_deleted', { msgId, roomId: msg.roomId });
@@ -1010,23 +1374,91 @@ io.on('connection', async (socket) => {
 
   socket.on('typing', async ({ roomId, isTyping }) => {
     try {
-      const [dm, clique, course] = await Promise.all([
-        DM.findOne({ roomId }),
-        Clique.findById(roomId),
-        Course.findOne({ roomId })
-      ]);
-      const room = dm || clique || course;
-      if (!room || !courseHasMember(room, uid)) return;
+      const target = await findChatRoom(roomId);
+      if (!target || !courseHasMember(target.room, uid)) return;
       socket.to(roomId).emit('typing', { roomId, userId: uid, isTyping });
     } catch (e) {
       socket.emit('error', e.message);
     }
   });
-  socket.on('call_offer',   (data) => socket.to(data.to).emit('call_offer',   { ...data, from: uid }));
-  socket.on('call_answer',  (data) => socket.to(data.to).emit('call_answer',  { ...data, from: uid }));
-  socket.on('call_ice',     (data) => socket.to(data.to).emit('call_ice',     { ...data, from: uid }));
-  socket.on('call_end',     (data) => socket.to(data.to).emit('call_end',     { from: uid }));
-  socket.on('call_reject',  (data) => socket.to(data.to).emit('call_reject',  { from: uid }));
+  const callRoomFor = async data => {
+    if (!data || typeof data.to !== 'string' || typeof data.roomId !== 'string') return null;
+    const target = await findChatRoom(data.roomId);
+    if (!target || target.type !== 'dm' || !courseHasMember(target.room, uid)) return null;
+    const memberIds = (target.room.members || []).map(member => String(typeof member === 'string' ? member : member._id || member.id));
+    return memberIds.includes(data.to) && data.to !== uid ? target : null;
+  };
+  const pendingCallKey = (roomId, callerId, recipientId) => `${roomId}|${callerId}|${recipientId}`;
+  socket.on('call_offer', async data => {
+    try {
+      if (!await callRoomFor(data)) return socket.emit('error', 'Calls are only available between direct-message participants');
+      const key = pendingCallKey(data.roomId, uid, data.to);
+      clearTimeout(pendingCalls.get(key)?.timer);
+      const pending = { answered: false, timer: null };
+      pending.timer = setTimeout(() => {
+        if (pendingCalls.get(key) === pending) pendingCalls.delete(key);
+      }, 120000);
+      pending.timer.unref?.();
+      pendingCalls.set(key, pending);
+      socket.to(data.to).emit('call_offer', { ...data, from: uid });
+    } catch (error) {
+      socket.emit('error', error.message);
+    }
+  });
+  socket.on('call_answer', async data => {
+    try {
+      if (!await callRoomFor(data)) return socket.emit('error', 'Calls are only available between direct-message participants');
+      const pending = pendingCalls.get(pendingCallKey(data.roomId, data.to, uid));
+      if (!pending) return;
+      pending.answered = true;
+      socket.to(data.to).emit('call_answer', { ...data, from: uid });
+    } catch (error) {
+      socket.emit('error', error.message);
+    }
+  });
+  socket.on('call_ice', async data => {
+    try {
+      if (!await callRoomFor(data)) return socket.emit('error', 'Calls are only available between direct-message participants');
+      socket.to(data.to).emit('call_ice', { ...data, from: uid });
+    } catch (error) {
+      socket.emit('error', error.message);
+    }
+  });
+  socket.on('call_end', async data => {
+    try {
+      if (!await callRoomFor(data)) return socket.emit('error', 'Calls are only available between direct-message participants');
+      const outgoingKey = pendingCallKey(data.roomId, uid, data.to);
+      const incomingKey = pendingCallKey(data.roomId, data.to, uid);
+      const key = pendingCalls.has(outgoingKey) ? outgoingKey : incomingKey;
+      const pending = pendingCalls.get(key);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingCalls.delete(key);
+      }
+      const missed = Boolean(pending && !pending.answered);
+      socket.to(data.to).emit('call_end', { from: uid, missed });
+      const missedRecipient = key === outgoingKey ? data.to : uid;
+      if (missed && !onlineUsers.has(missedRecipient)) {
+        const callerId = key === outgoingKey ? uid : data.to;
+        const caller = await User.findById(callerId);
+        await sendPush(missedRecipient, 'Missed call', `${caller?.name || 'A Klasora member'} tried to reach you.`, { url: '/?calls=1' });
+      }
+    } catch (error) {
+      socket.emit('error', error.message);
+    }
+  });
+  socket.on('call_reject', async data => {
+    try {
+      if (!await callRoomFor(data)) return socket.emit('error', 'Calls are only available between direct-message participants');
+      const key = pendingCallKey(data.roomId, data.to, uid);
+      const pending = pendingCalls.get(key);
+      if (pending) clearTimeout(pending.timer);
+      pendingCalls.delete(key);
+      socket.to(data.to).emit('call_reject', { from: uid });
+    } catch (error) {
+      socket.emit('error', error.message);
+    }
+  });
 
   socket.on('disconnect', async () => {
     onlineUsers.delete(uid);
@@ -1036,6 +1468,22 @@ io.on('connection', async (socket) => {
 });
 
 // ── SERVE FRONTEND ────────────────────────────────────────────
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  console.error('Unhandled request error:', error);
+  const status = Number.isInteger(error.status) && error.status >= 400 && error.status < 500
+    ? error.status
+    : error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE'
+      ? 413
+      : 500;
+  const message = status === 413
+    ? 'The uploaded file or request body is too large.'
+    : status === 400
+      ? 'The request could not be understood. Check your input and try again.'
+      : 'Request failed. Please try again.';
+  res.status(status).json({ error: message });
+});
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 const PORT = process.env.PORT || 3000;
@@ -1043,4 +1491,6 @@ if (require.main === module) {
   server.listen(PORT, () => console.log(`🚀 Klasora v2 running on http://localhost:${PORT}`));
 }
 
-module.exports = { app, server };
+module.exports = app;
+module.exports.app = app;
+module.exports.server = server;

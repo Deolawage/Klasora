@@ -5,8 +5,13 @@ create table if not exists users (
   name text not null check (char_length(trim(name)) between 2 and 80),
   email text not null unique check (email = lower(email) and char_length(email) between 3 and 254),
   password text,
-  color text not null default '#6c63ff',
+  color text not null default '#087e7b',
   bio text not null default '',
+  course_of_study text not null default '',
+  level text not null default '',
+  matriculation_number text not null default '',
+  institution text not null default '',
+  profile_image_path text,
   online boolean not null default false,
   theme text not null default 'dark' check (theme in ('dark', 'light')),
   push_sub jsonb default null,
@@ -14,6 +19,12 @@ create table if not exists users (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table users add column if not exists course_of_study text not null default '';
+alter table users add column if not exists level text not null default '';
+alter table users add column if not exists matriculation_number text not null default '';
+alter table users add column if not exists institution text not null default '';
+alter table users add column if not exists profile_image_path text;
 
 create table if not exists messages (
   id uuid primary key default gen_random_uuid(),
@@ -60,8 +71,10 @@ create table if not exists dms (
 create table if not exists cliques (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  description text not null default '',
+  visibility text not null default 'private' check (visibility in ('private', 'public')),
   emoji text not null default '??',
-  color text not null default '#6c63ff',
+  color text not null default '#087e7b',
   members uuid[] not null default '{}',
   created_by uuid references users(id) on delete set null,
   last_msg text not null default '',
@@ -69,6 +82,34 @@ create table if not exists cliques (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table cliques add column if not exists description text not null default '';
+alter table cliques add column if not exists visibility text not null default 'private';
+alter table cliques drop constraint if exists cliques_visibility_check;
+alter table cliques add constraint cliques_visibility_check check (visibility in ('private', 'public'));
+create index if not exists idx_cliques_visibility on cliques(visibility);
+
+create table if not exists clique_join_requests (
+  id uuid primary key default gen_random_uuid(),
+  clique_id uuid not null references cliques(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'declined')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (clique_id, user_id)
+);
+
+create index if not exists idx_clique_join_requests_status on clique_join_requests(status, created_at desc);
+create table if not exists clique_pins (
+  id uuid primary key default gen_random_uuid(),
+  clique_id uuid not null references cliques(id) on delete cascade,
+  message_id uuid not null references messages(id) on delete cascade,
+  pinned_by uuid not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (clique_id, message_id)
+);
+
+create index if not exists idx_clique_pins_clique_id on clique_pins(clique_id, created_at desc);
 
 create table if not exists homework (
   id uuid primary key default gen_random_uuid(),
@@ -157,6 +198,9 @@ on conflict (id) do nothing;
 insert into storage.buckets (id, name, public)
 values ('chat-files', 'chat-files', false)
 on conflict (id) do nothing;
+insert into storage.buckets (id, name, public)
+values ('profile-images', 'profile-images', false)
+on conflict (id) do nothing;
 
 -- The backend uses the Supabase service-role key, so direct public API access
 -- must be denied. Service-role requests continue to work because they bypass RLS.
@@ -164,6 +208,8 @@ alter table users enable row level security;
 alter table messages enable row level security;
 alter table dms enable row level security;
 alter table cliques enable row level security;
+alter table clique_join_requests enable row level security;
+alter table clique_pins enable row level security;
 alter table homework enable row level security;
 alter table pomodoros enable row level security;
 alter table courses enable row level security;
